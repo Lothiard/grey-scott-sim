@@ -5,13 +5,13 @@
 #include <sstream>
 
 namespace GreyScott {
-
     ComputeManager::ComputeManager() :
-        m_initialized(false),
-        m_platform(nullptr),
-        m_device(nullptr),
-        m_context(nullptr),
-        m_queue(nullptr) {}
+        m_initialized{},
+        m_platform{},
+        m_device{},
+        m_context{},
+        m_queue{}
+        {}
 
     ComputeManager::~ComputeManager() {
         if (m_queue) { clReleaseCommandQueue(m_queue); }
@@ -20,17 +20,17 @@ namespace GreyScott {
 
     bool ComputeManager::initialize() {
         if (m_initialized) {
-            std::cerr << "ComputeManager already initialized!" << std::endl;
+            std::cerr << "ComputeManager already initialized!\n";
             return false;
         }
 
-        cl_int err;
-        cl_uint numPlatforms;
+        cl_int err{};
+        cl_uint numPlatforms{};
 
         // Get number of platforms
         err = clGetPlatformIDs(0, nullptr, &numPlatforms);
         if (err != CL_SUCCESS || numPlatforms == 0) {
-            std::cerr << "Failed to find OpenCL platforms!" << std::endl;
+            std::cerr << "Failed to find OpenCL platforms!\n";
             return false;
         }
 
@@ -38,17 +38,16 @@ namespace GreyScott {
         std::vector<cl_platform_id> platforms(numPlatforms);
         err = clGetPlatformIDs(numPlatforms, platforms.data(), nullptr);
         if (err != CL_SUCCESS) {
-            std::cerr << "Failed to get platform IDs!" << std::endl;
+            std::cerr << "Failed to get platform IDs!\n";
             return false;
         }
 
-        std::cout << "Found " << numPlatforms << " OpenCL platform(s)"
-                  << std::endl;
+        std::cout << "Found " << numPlatforms << " OpenCL platform(s)\n";
 
         // Try to find a GPU device, fall back to any device
-        bool foundDevice = false;
-        for (cl_uint i = 0; i < numPlatforms && !foundDevice; ++i) {
-            cl_uint numDevices;
+        bool foundDevice{};
+        for (cl_uint i{}; i < numPlatforms && !foundDevice; ++i) {
+            cl_uint numDevices{};
             err = clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_GPU, 0, nullptr,
                                  &numDevices);
 
@@ -67,8 +66,8 @@ namespace GreyScott {
 
         // If no GPU found, try any device
         if (!foundDevice) {
-            for (cl_uint i = 0; i < numPlatforms && !foundDevice; ++i) {
-                cl_uint numDevices;
+            for (cl_uint i{}; i < numPlatforms && !foundDevice; ++i) {
+                cl_uint numDevices{};
                 err = clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, 0,
                                      nullptr, &numDevices);
 
@@ -87,7 +86,7 @@ namespace GreyScott {
         }
 
         if (!foundDevice) {
-            std::cerr << "Failed to find any OpenCL device!" << std::endl;
+            std::cerr << "Failed to find any OpenCL device!\n";
             return false;
         }
 
@@ -96,7 +95,7 @@ namespace GreyScott {
             clCreateContext(nullptr, 1, &m_device, nullptr, nullptr, &err);
         if (err != CL_SUCCESS) {
             std::cerr << "Failed to create OpenCL context! Error: " << err
-                      << std::endl;
+                      << '\n';
             return false;
         }
 
@@ -114,21 +113,20 @@ namespace GreyScott {
         // Get device info
         m_currentDeviceInfo = getDeviceInfo(m_device);
 
-        std::cout << "OpenCL initialized successfully" << std::endl;
-        std::cout << "  Device: " << m_currentDeviceInfo.name << std::endl;
-        std::cout << "  Vendor: " << m_currentDeviceInfo.vendor << std::endl;
+        std::cout << "OpenCL initialized successfully\n";
+        std::cout << "  Device: " << m_currentDeviceInfo.name << '\n';
+        std::cout << "  Vendor: " << m_currentDeviceInfo.vendor << '\n';
         std::cout << "  Type: " << getDeviceTypeString(m_currentDeviceInfo.type)
-                  << std::endl;
+                  << '\n';
         std::cout << "  Compute Units: " << m_currentDeviceInfo.maxComputeUnits
-                  << std::endl;
+                  << '\n';
         std::cout << "  Max Work Group Size: "
-                  << m_currentDeviceInfo.maxWorkGroupSize << std::endl;
+                  << m_currentDeviceInfo.maxWorkGroupSize << '\n';
         std::cout << "  Global Memory: "
                   << (m_currentDeviceInfo.globalMemSize / (1024 * 1024))
-                  << " MB" << std::endl;
+                  << " MB" << '\n';
         std::cout << "  Local Memory: "
-                  << (m_currentDeviceInfo.localMemSize / 1024) << " KB"
-                  << std::endl;
+                  << (m_currentDeviceInfo.localMemSize / 1024) << " KB" << '\n';
 
         m_initialized = true;
         return true;
@@ -143,9 +141,9 @@ namespace GreyScott {
     }
 
     std::vector<DeviceInfo> ComputeManager::queryDevices() const {
-        std::vector<DeviceInfo> devices;
-        cl_int err;
-        cl_uint numPlatforms;
+        std::vector<DeviceInfo> devices{};
+        cl_int err{};
+        cl_uint numPlatforms{};
 
         err = clGetPlatformIDs(0, nullptr, &numPlatforms);
         if (err != CL_SUCCESS || numPlatforms == 0) { return devices; }
@@ -154,8 +152,8 @@ namespace GreyScott {
         err = clGetPlatformIDs(numPlatforms, platforms.data(), nullptr);
         if (err != CL_SUCCESS) { return devices; }
 
-        for (cl_uint i = 0; i < numPlatforms; ++i) {
-            cl_uint numDevices;
+        for (cl_uint i{}; i < numPlatforms; ++i) {
+            cl_uint numDevices{};
             err = clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, 0, nullptr,
                                  &numDevices);
 
@@ -177,39 +175,36 @@ namespace GreyScott {
     }
 
     void ComputeManager::printDeviceInfo() const {
-        auto devices = queryDevices();
+        auto devices{ queryDevices() };
 
-        std::cout << "\n=== Available OpenCL Devices ===" << std::endl;
-        for (size_t i = 0; i < devices.size(); ++i) {
+        std::cout << "\n=== Available OpenCL Devices ===\n";
+        for (size_t i{}; i < devices.size(); ++i) {
             const auto& dev = devices[i];
-            std::cout << "\nDevice " << i << ":" << std::endl;
-            std::cout << "  Name: " << dev.name << std::endl;
-            std::cout << "  Vendor: " << dev.vendor << std::endl;
-            std::cout << "  Version: " << dev.version << std::endl;
-            std::cout << "  Type: " << getDeviceTypeString(dev.type)
-                      << std::endl;
-            std::cout << "  Compute Units: " << dev.maxComputeUnits
-                      << std::endl;
+            std::cout << "\nDevice " << i << ":\n";
+            std::cout << "  Name: " << dev.name << '\n';
+            std::cout << "  Vendor: " << dev.vendor << '\n';
+            std::cout << "  Version: " << dev.version << '\n';
+            std::cout << "  Type: " << getDeviceTypeString(dev.type) << '\n';
+            std::cout << "  Compute Units: " << dev.maxComputeUnits << '\n';
             std::cout << "  Max Work Group Size: " << dev.maxWorkGroupSize
-                      << std::endl;
+                      << '\n';
             std::cout << "  Global Memory: "
-                      << (dev.globalMemSize / (1024 * 1024)) << " MB"
-                      << std::endl;
+                      << (dev.globalMemSize / (1024 * 1024)) << " MB" << '\n';
             std::cout << "  Local Memory: " << (dev.localMemSize / 1024)
-                      << " KB" << std::endl;
+                      << " KB\n";
             std::cout << "  Available: " << (dev.available ? "Yes" : "No")
-                      << std::endl;
+                      << '\n';
         }
-        std::cout << "================================\n" << std::endl;
+        std::cout << "================================\n\n";
     }
 
     DeviceInfo ComputeManager::getDeviceInfo(cl_device_id device) const {
-        DeviceInfo info;
-        char buffer[1024];
-        cl_uint uintVal;
-        cl_ulong ulongVal;
-        cl_device_type typeVal;
-        cl_bool boolVal;
+        DeviceInfo info{};
+        char buffer[1024]{};
+        cl_uint uintVal{};
+        cl_ulong ulongVal{};
+        cl_device_type typeVal{};
+        cl_bool boolVal{};
 
         clGetDeviceInfo(device, CL_DEVICE_NAME, sizeof(buffer), buffer,
                         nullptr);
@@ -264,12 +259,11 @@ namespace GreyScott {
     ComputeManager::readKernelSource(const std::string& filename) const {
         std::ifstream file(filename);
         if (!file.is_open()) {
-            std::cerr << "Failed to open kernel file: " << filename
-                      << std::endl;
+            std::cerr << "Failed to open kernel file: " << filename << '\n';
             return "";
         }
 
-        std::stringstream buffer;
+        std::stringstream buffer{};
         buffer << file.rdbuf();
         return buffer.str();
     }
@@ -277,40 +271,39 @@ namespace GreyScott {
     cl_kernel ComputeManager::loadKernel(const std::string& filename,
                                          const std::string& kernelName) {
         if (!m_initialized) {
-            std::cerr << "ComputeManager not initialized!" << std::endl;
+            std::cerr << "ComputeManager not initialized!\n";
             return nullptr;
         }
 
         // Read kernel source
-        std::string source = readKernelSource(filename);
+        std::string source{readKernelSource(filename)};
         if (source.empty()) { return nullptr; }
 
-        cl_int err;
-        const char* sourcePtr = source.c_str();
-        size_t sourceSize = source.length();
+        cl_int err{};
+        const char* sourcePtr{ source.c_str() };
+        size_t sourceSize{ source.length() };
 
         // Create program
-        cl_program program = clCreateProgramWithSource(m_context, 1, &sourcePtr,
-                                                       &sourceSize, &err);
+        cl_program program{ clCreateProgramWithSource(m_context, 1, &sourcePtr,
+                                                     &sourceSize, &err) };
         if (err != CL_SUCCESS) {
-            std::cerr << "Failed to create program! Error: " << err
-                      << std::endl;
+            std::cerr << "Failed to create program! Error: " << err << '\n';
             return nullptr;
         }
 
         // Build program
         err = clBuildProgram(program, 1, &m_device, nullptr, nullptr, nullptr);
         if (err != CL_SUCCESS) {
-            std::cerr << "Failed to build program! Error: " << err << std::endl;
+            std::cerr << "Failed to build program! Error: " << err << '\n';
 
             // Get build log
-            size_t logSize;
+            size_t logSize{};
             clGetProgramBuildInfo(program, m_device, CL_PROGRAM_BUILD_LOG, 0,
                                   nullptr, &logSize);
             std::vector<char> log(logSize);
             clGetProgramBuildInfo(program, m_device, CL_PROGRAM_BUILD_LOG,
                                   logSize, log.data(), nullptr);
-            std::cerr << "Build log:\n" << log.data() << std::endl;
+            std::cerr << "Build log:\n" << log.data() << '\n';
 
             clReleaseProgram(program);
             return nullptr;
@@ -320,7 +313,7 @@ namespace GreyScott {
         cl_kernel kernel = clCreateKernel(program, kernelName.c_str(), &err);
         if (err != CL_SUCCESS) {
             std::cerr << "Failed to create kernel '" << kernelName
-                      << "'! Error: " << err << std::endl;
+                      << "'! Error: " << err << '\n';
             clReleaseProgram(program);
             return nullptr;
         }
@@ -328,7 +321,7 @@ namespace GreyScott {
         clReleaseProgram(program);
 
         std::cout << "Loaded kernel '" << kernelName << "' from " << filename
-                  << std::endl;
+                  << '\n';
         return kernel;
     }
 

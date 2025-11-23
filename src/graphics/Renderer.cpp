@@ -3,7 +3,6 @@
 #include <iostream>
 
 namespace GreyScott {
-
     // Simple vertex shader for full-screen quad
     const char* vertexShaderSource = R"(
 #version 460 core
@@ -31,7 +30,7 @@ uniform sampler2D uTexture;
 void main() {
     // Sample the texture (R channel has U concentration, G has V)
     float u = texture(uTexture, TexCoord).r;
-    
+
     // Simple grayscale visualization for now
     // Later we can add color mapping
     FragColor = vec4(u, u, u, 1.0);
@@ -39,15 +38,16 @@ void main() {
 )";
 
     Renderer::Renderer(int width, int height) :
-        m_width(width),
-        m_height(height),
-        m_initialized(false),
-        m_texture(0),
-        m_vao(0),
-        m_vbo(0),
-        m_shaderProgram(0),
-        m_vertexShader(0),
-        m_fragmentShader(0) {}
+        m_width{ width },
+        m_height{ height },
+        m_initialized{},
+        m_texture{},
+        m_vao{},
+        m_vbo{},
+        m_shaderProgram{},
+        m_vertexShader{},
+        m_fragmentShader{}
+        {}
 
     Renderer::~Renderer() {
         if (m_shaderProgram) { glDeleteProgram(m_shaderProgram); }
@@ -60,18 +60,16 @@ void main() {
 
     bool Renderer::initialize() {
         if (m_initialized) {
-            std::cerr << "Renderer already initialized!" << std::endl;
+            std::cerr << "Renderer already initialized!\n";
             return false;
         }
 
         if (!createTexture()) { return false; }
-
         if (!createShaders()) { return false; }
-
         if (!createQuad()) { return false; }
 
-        std::cout << "Renderer initialized successfully" << std::endl;
-        std::cout << "  Grid size: " << m_width << "x" << m_height << std::endl;
+        std::cout << "Renderer initialized successfully\n";
+        std::cout << "  Grid size: " << m_width << "x" << m_height;
 
         m_initialized = true;
         return true;
@@ -91,21 +89,20 @@ void main() {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RG32F, m_width, m_height, 0, GL_RG,
                      GL_FLOAT, nullptr);
 
-        GLenum error = glGetError();
+        GLenum error{ glGetError() };
         if (error != GL_NO_ERROR) {
             std::cerr << "Failed to create texture! OpenGL error: " << error
-                      << std::endl;
+                      << '\n';
             return false;
         }
 
-        std::cout << "Created texture: " << m_width << "x" << m_height
-                  << std::endl;
+        std::cout << "Created texture: " << m_width << "x" << m_height << '\n';
         return true;
     }
 
     bool Renderer::createShaders() {
-        GLint success;
-        GLchar infoLog[512];
+        GLint success{};
+        GLchar infoLog[512]{};
 
         // Compile vertex shader
         m_vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -116,7 +113,7 @@ void main() {
         if (!success) {
             glGetShaderInfoLog(m_vertexShader, 512, nullptr, infoLog);
             std::cerr << "Vertex shader compilation failed:\n"
-                      << infoLog << std::endl;
+                      << infoLog << '\n';
             return false;
         }
 
@@ -129,7 +126,7 @@ void main() {
         if (!success) {
             glGetShaderInfoLog(m_fragmentShader, 512, nullptr, infoLog);
             std::cerr << "Fragment shader compilation failed:\n"
-                      << infoLog << std::endl;
+                      << infoLog << '\n';
             return false;
         }
 
@@ -143,11 +140,11 @@ void main() {
         if (!success) {
             glGetProgramInfoLog(m_shaderProgram, 512, nullptr, infoLog);
             std::cerr << "Shader program linking failed:\n"
-                      << infoLog << std::endl;
+                      << infoLog << '\n';
             return false;
         }
 
-        std::cout << "Shaders compiled and linked successfully" << std::endl;
+        std::cout << "Shaders compiled and linked successfully\n";
         return true;
     }
 
@@ -187,11 +184,11 @@ void main() {
         GLenum error = glGetError();
         if (error != GL_NO_ERROR) {
             std::cerr << "Failed to create quad geometry! OpenGL error: "
-                      << error << std::endl;
+                      << error << '\n';
             return false;
         }
 
-        std::cout << "Created quad geometry" << std::endl;
+        std::cout << "Created quad geometry\n";
         return true;
     }
 
