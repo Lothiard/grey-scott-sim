@@ -24,6 +24,7 @@ namespace GreyScott {
         bool initialize();
         void updateTexture(const float* data);
         void render();
+        void renderText(const char* text, float x, float y, float scale);
         GLuint getTextureID() const { return m_texture; }
 
     private:

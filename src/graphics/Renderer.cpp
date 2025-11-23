@@ -18,7 +18,6 @@ void main() {
 }
 )";
 
-    // Fragment shader that visualizes the U chemical concentration
     const char* fragmentShaderSource = R"(
 #version 460 core
 
@@ -27,13 +26,24 @@ out vec4 FragColor;
 
 uniform sampler2D uTexture;
 
-void main() {
-    // Sample the texture (R channel has U concentration, G has V)
-    float u = texture(uTexture, TexCoord).r;
+vec3 heatMap(float t) {
+    vec3 purple = vec3(0.15, 0.0, 0.2);
+    vec3 green = vec3(0.0, 0.6, 0.2);
+    vec3 yellow = vec3(1.0, 0.95, 0.3);
+    
+    t = 1.0 - t;
+    
+    if (t < 0.5) {
+        return mix(purple, green, t * 2.0);
+    } else {
+        return mix(green, yellow, (t - 0.5) * 2.0);
+    }
+}
 
-    // Simple grayscale visualization for now
-    // Later we can add color mapping
-    FragColor = vec4(u, u, u, 1.0);
+void main() {
+    float u = texture(uTexture, TexCoord).r;
+    vec3 color = heatMap(u);
+    FragColor = vec4(color, 1.0);
 }
 )";
 
@@ -218,6 +228,15 @@ void main() {
         glBindVertexArray(m_vao);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindVertexArray(0);
+    }
+
+    void Renderer::renderText(const char* text, float x, float y, float scale) {
+        // Simple text rendering using window title for now
+        // Full implementation would require font texture atlas
+        (void)text;
+        (void)x;
+        (void)y;
+        (void)scale;
     }
 
 } // namespace GreyScott

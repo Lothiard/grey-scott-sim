@@ -154,4 +154,31 @@ namespace GreyScott {
 
     void Simulation::reset() { initializeState(); }
 
+    void Simulation::loadPreset(int presetIndex) {
+        switch (presetIndex) {
+        case 1:
+            m_params.F = 0.055f;
+            m_params.k = 0.062f;
+            break;
+        case 2:
+            m_params.F = 0.039f;
+            m_params.k = 0.058f;
+            break;
+        case 3:
+            m_params.F = 0.026f;
+            m_params.k = 0.051f;
+            break;
+        case 4:
+            m_params.F = 0.018f;
+            m_params.k = 0.051f;
+            break;
+        case 5:
+            m_params.F = 0.014f;
+            m_params.k = 0.047f;
+            break;
+        default:
+            break;
+        }
+    }
+
 } // namespace GreyScott

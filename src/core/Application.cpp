@@ -5,7 +5,11 @@
 #include "ComputeManager.hpp"
 #include "Renderer.hpp"
 #include "Simulation.hpp"
+#include <imgui.h>
+#include <imgui_impl_sdl2.h>
+#include <imgui_impl_opengl3.h>
 #include <iostream>
+#include <algorithm>
 // clang-format on
 
 namespace GreyScott {
@@ -22,6 +26,10 @@ namespace GreyScott {
         {}
 
     Application::~Application() {
+        ImGui_ImplOpenGL3_Shutdown();
+        ImGui_ImplSDL2_Shutdown();
+        ImGui::DestroyContext();
+
         if (m_glContext) { SDL_GL_DeleteContext(m_glContext); }
         if (m_window) { SDL_DestroyWindow(m_window); }
         SDL_Quit();
@@ -55,6 +63,16 @@ namespace GreyScott {
             std::cerr << "Failed to initialize simulation!\n";
             return false;
         }
+
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        ImGuiIO& io{ ImGui::GetIO() };
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+        ImGui::StyleColorsDark();
+
+        ImGui_ImplSDL2_InitForOpenGL(m_window, m_glContext);
+        ImGui_ImplOpenGL3_Init("#version 460");
 
         std::cout << "Application initialized successfully\n";
         std::cout << "  Window: " << m_config.windowWidth << "x"
@@ -169,11 +187,92 @@ namespace GreyScott {
     void Application::handleEvents() {
         SDL_Event event{};
         while (SDL_PollEvent(&event)) {
+            ImGui_ImplSDL2_ProcessEvent(&event);
+            
             switch (event.type) {
             case SDL_QUIT: quit(); break;
 
             case SDL_KEYDOWN:
-                if (event.key.keysym.sym == SDLK_ESCAPE) { quit(); }
+                switch (event.key.keysym.sym) {
+                case SDLK_ESCAPE: quit(); break;
+                case SDLK_r:
+                    if (m_simulation) {
+                        m_simulation->reset();
+                        std::cout << "Simulation reset\n";
+                    }
+                    break;
+                case SDLK_SPACE:
+                    m_paused = !m_paused;
+                    std::cout << (m_paused ? "Paused\n" : "Resumed\n");
+                    break;
+                case SDLK_UP:
+                    if (m_simulation) {
+                        auto params{ m_simulation->getParams() };
+                        params.F += 0.001f;
+                        params.F = std::min(params.F, 0.1f);
+                        m_simulation->setParams(params);
+                        std::cout << "F = " << params.F << '\n';
+                    }
+                    break;
+                case SDLK_DOWN:
+                    if (m_simulation) {
+                        auto params{ m_simulation->getParams() };
+                        params.F -= 0.001f;
+                        params.F = std::max(params.F, 0.0f);
+                        m_simulation->setParams(params);
+                        std::cout << "F = " << params.F << '\n';
+                    }
+                    break;
+                case SDLK_RIGHT:
+                    if (m_simulation) {
+                        auto params{ m_simulation->getParams() };
+                        params.k += 0.001f;
+                        params.k = std::min(params.k, 0.1f);
+                        m_simulation->setParams(params);
+                        std::cout << "k = " << params.k << '\n';
+                    }
+                    break;
+                case SDLK_LEFT:
+                    if (m_simulation) {
+                        auto params{ m_simulation->getParams() };
+                        params.k -= 0.001f;
+                        params.k = std::max(params.k, 0.0f);
+                        m_simulation->setParams(params);
+                        std::cout << "k = " << params.k << '\n';
+                    }
+                    break;
+                case SDLK_F1:
+                    if (m_simulation) {
+                        m_simulation->loadPreset(1);
+                        std::cout << "Loaded preset 1: Spots\n";
+                    }
+                    break;
+                case SDLK_F2:
+                    if (m_simulation) {
+                        m_simulation->loadPreset(2);
+                        std::cout << "Loaded preset 2: Stripes\n";
+                    }
+                    break;
+                case SDLK_F3:
+                    if (m_simulation) {
+                        m_simulation->loadPreset(3);
+                        std::cout << "Loaded preset 3: Waves\n";
+                    }
+                    break;
+                case SDLK_F4:
+                    if (m_simulation) {
+                        m_simulation->loadPreset(4);
+                        std::cout << "Loaded preset 4: Chaos\n";
+                    }
+                    break;
+                case SDLK_F5:
+                    if (m_simulation) {
+                        m_simulation->loadPreset(5);
+                        std::cout << "Loaded preset 5: Holes\n";
+                    }
+                    break;
+                default: break;
+                }
                 break;
 
             default: break;
@@ -182,12 +281,13 @@ namespace GreyScott {
     }
 
     void Application::update(float deltaTime) {
-        if (m_simulation) { m_simulation->step(); }
+        if (m_simulation && !m_paused) { m_simulation->step(); }
 
         ++m_frameCount;
         m_fpsTimer += deltaTime;
 
         if (m_fpsTimer >= 1.0f) {
+            m_currentFps = m_frameCount;
             std::cout << "FPS: " << m_frameCount << '\n';
             m_frameCount = 0;
             m_fpsTimer = 0.0f;
@@ -201,6 +301,42 @@ namespace GreyScott {
             m_renderer->updateTexture(m_simulation->getData());
             m_renderer->render();
         }
+
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplSDL2_NewFrame();
+        ImGui::NewFrame();
+
+        ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(300, 200), ImGuiCond_FirstUseEver);
+        ImGui::Begin("Simulation Info", nullptr, ImGuiWindowFlags_NoCollapse);
+
+        ImGui::Text("FPS: %d", m_currentFps);
+        ImGui::Separator();
+
+        if (m_simulation) {
+            auto params = m_simulation->getParams();
+            ImGui::Text("Feed Rate (F): %.4f", params.F);
+            ImGui::Text("Kill Rate (k): %.4f", params.k);
+            ImGui::Text("Diffusion U: %.4f", params.Du);
+            ImGui::Text("Diffusion V: %.4f", params.Dv);
+            ImGui::Separator();
+        }
+
+        ImGui::Text("Status: %s", m_paused ? "PAUSED" : "Running");
+        ImGui::Separator();
+
+        ImGui::Text("Controls:");
+        ImGui::BulletText("Space: Pause/Resume");
+        ImGui::BulletText("R: Reset");
+        ImGui::BulletText("Up/Down: Adjust F");
+        ImGui::BulletText("Left/Right: Adjust k");
+        ImGui::BulletText("F1-F5: Load Presets");
+        ImGui::BulletText("ESC: Quit");
+
+        ImGui::End();
+
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     }
 
     void Application::quit() { m_running = false; }
