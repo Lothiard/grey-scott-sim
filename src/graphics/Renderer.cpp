@@ -27,14 +27,16 @@ out vec4 FragColor;
 uniform sampler2D uTexture;
 
 vec3 heatMap(float t) {
-    vec3 cold = vec3(0.0, 0.0, 0.3);
-    vec3 mid = vec3(0.8, 0.2, 0.0);
-    vec3 hot = vec3(1.0, 1.0, 0.2);
+    vec3 purple = vec3(0.15, 0.0, 0.2);
+    vec3 green = vec3(0.0, 0.6, 0.2);
+    vec3 yellow = vec3(1.0, 0.95, 0.3);
+    
+    t = 1.0 - t;
     
     if (t < 0.5) {
-        return mix(cold, mid, t * 2.0);
+        return mix(purple, green, t * 2.0);
     } else {
-        return mix(mid, hot, (t - 0.5) * 2.0);
+        return mix(green, yellow, (t - 0.5) * 2.0);
     }
 }
 
