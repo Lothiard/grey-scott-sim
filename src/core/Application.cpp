@@ -6,6 +6,7 @@
 #include "Renderer.hpp"
 #include "Simulation.hpp"
 #include <iostream>
+#include <algorithm>
 // clang-format on
 
 namespace GreyScott {
@@ -184,6 +185,42 @@ namespace GreyScott {
                 case SDLK_SPACE:
                     m_paused = !m_paused;
                     std::cout << (m_paused ? "Paused\n" : "Resumed\n");
+                    break;
+                case SDLK_UP:
+                    if (m_simulation) {
+                        auto params{ m_simulation->getParams() };
+                        params.F += 0.001f;
+                        params.F = std::min(params.F, 0.1f);
+                        m_simulation->setParams(params);
+                        std::cout << "F = " << params.F << '\n';
+                    }
+                    break;
+                case SDLK_DOWN:
+                    if (m_simulation) {
+                        auto params{ m_simulation->getParams() };
+                        params.F -= 0.001f;
+                        params.F = std::max(params.F, 0.0f);
+                        m_simulation->setParams(params);
+                        std::cout << "F = " << params.F << '\n';
+                    }
+                    break;
+                case SDLK_RIGHT:
+                    if (m_simulation) {
+                        auto params{ m_simulation->getParams() };
+                        params.k += 0.001f;
+                        params.k = std::min(params.k, 0.1f);
+                        m_simulation->setParams(params);
+                        std::cout << "k = " << params.k << '\n';
+                    }
+                    break;
+                case SDLK_LEFT:
+                    if (m_simulation) {
+                        auto params{ m_simulation->getParams() };
+                        params.k -= 0.001f;
+                        params.k = std::max(params.k, 0.0f);
+                        m_simulation->setParams(params);
+                        std::cout << "k = " << params.k << '\n';
+                    }
                     break;
                 default: break;
                 }
