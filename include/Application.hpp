@@ -12,12 +12,12 @@ namespace GreyScott {
     class Application {
     public:
         struct Config {
-            std::string windowTitle{ "Grey-Scott Simulation" };
-            int windowWidth{ 1024 };
-            int windowHeight{ 1024 };
-            int gridWidth{ 512 };
-            int gridHeight{ 512 };
-            bool vsync{ true };
+            const std::string windowTitle{ "Grey-Scott Simulation" };
+            constexpr static int windowWidth{ 1024 };
+            constexpr static int windowHeight{ 1024 };
+            constexpr static int gridWidth{ 512 };
+            constexpr static int gridHeight{ 512 };
+            constexpr static bool vsync{ true };
         };
 
         explicit Application(const Config& config);
