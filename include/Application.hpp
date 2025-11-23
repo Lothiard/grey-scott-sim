@@ -50,6 +50,7 @@ namespace GreyScott {
         uint64_t m_lastFrameTime{};
         int m_frameCount{};
         float m_fpsTimer{};
+        int m_currentFps{};
 
         std::unique_ptr<ComputeManager> m_computeManager{};
         std::unique_ptr<Renderer> m_renderer{};

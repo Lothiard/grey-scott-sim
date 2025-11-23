@@ -22,6 +22,7 @@ include_directories(
     ${OpenCL_INCLUDE_DIRS}
     ${SDL2_INCLUDE_DIRS}
     ${GLEW_INCLUDE_DIRS}
+    /usr/include/imgui
 )
 
 # Collect source files
@@ -38,7 +39,8 @@ target_link_libraries(${PROJECT_NAME}
     ${OpenCL_LIBRARIES}
     ${SDL2_LIBRARIES}
     ${GLEW_LIBRARIES}
-    dl  # For dynamic linking on Linux
+    imgui
+    dl
 )
 
 # Compiler warnings

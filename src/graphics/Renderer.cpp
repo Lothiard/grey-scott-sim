@@ -228,4 +228,13 @@ void main() {
         glBindVertexArray(0);
     }
 
+    void Renderer::renderText(const char* text, float x, float y, float scale) {
+        // Simple text rendering using window title for now
+        // Full implementation would require font texture atlas
+        (void)text;
+        (void)x;
+        (void)y;
+        (void)scale;
+    }
+
 } // namespace GreyScott

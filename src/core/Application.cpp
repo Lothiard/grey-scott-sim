@@ -5,6 +5,9 @@
 #include "ComputeManager.hpp"
 #include "Renderer.hpp"
 #include "Simulation.hpp"
+#include <imgui.h>
+#include <imgui_impl_sdl2.h>
+#include <imgui_impl_opengl3.h>
 #include <iostream>
 #include <algorithm>
 // clang-format on
@@ -23,6 +26,10 @@ namespace GreyScott {
         {}
 
     Application::~Application() {
+        ImGui_ImplOpenGL3_Shutdown();
+        ImGui_ImplSDL2_Shutdown();
+        ImGui::DestroyContext();
+
         if (m_glContext) { SDL_GL_DeleteContext(m_glContext); }
         if (m_window) { SDL_DestroyWindow(m_window); }
         SDL_Quit();
@@ -56,6 +63,16 @@ namespace GreyScott {
             std::cerr << "Failed to initialize simulation!\n";
             return false;
         }
+
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        ImGuiIO& io{ ImGui::GetIO() };
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+        ImGui::StyleColorsDark();
+
+        ImGui_ImplSDL2_InitForOpenGL(m_window, m_glContext);
+        ImGui_ImplOpenGL3_Init("#version 460");
 
         std::cout << "Application initialized successfully\n";
         std::cout << "  Window: " << m_config.windowWidth << "x"
@@ -170,6 +187,8 @@ namespace GreyScott {
     void Application::handleEvents() {
         SDL_Event event{};
         while (SDL_PollEvent(&event)) {
+            ImGui_ImplSDL2_ProcessEvent(&event);
+            
             switch (event.type) {
             case SDL_QUIT: quit(); break;
 
@@ -238,6 +257,7 @@ namespace GreyScott {
         m_fpsTimer += deltaTime;
 
         if (m_fpsTimer >= 1.0f) {
+            m_currentFps = m_frameCount;
             std::cout << "FPS: " << m_frameCount << '\n';
             m_frameCount = 0;
             m_fpsTimer = 0.0f;
@@ -251,6 +271,41 @@ namespace GreyScott {
             m_renderer->updateTexture(m_simulation->getData());
             m_renderer->render();
         }
+
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplSDL2_NewFrame();
+        ImGui::NewFrame();
+
+        ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(300, 200), ImGuiCond_FirstUseEver);
+        ImGui::Begin("Simulation Info", nullptr, ImGuiWindowFlags_NoCollapse);
+
+        ImGui::Text("FPS: %d", m_currentFps);
+        ImGui::Separator();
+
+        if (m_simulation) {
+            auto params = m_simulation->getParams();
+            ImGui::Text("Feed Rate (F): %.4f", params.F);
+            ImGui::Text("Kill Rate (k): %.4f", params.k);
+            ImGui::Text("Diffusion U: %.4f", params.Du);
+            ImGui::Text("Diffusion V: %.4f", params.Dv);
+            ImGui::Separator();
+        }
+
+        ImGui::Text("Status: %s", m_paused ? "PAUSED" : "Running");
+        ImGui::Separator();
+
+        ImGui::Text("Controls:");
+        ImGui::BulletText("Space: Pause/Resume");
+        ImGui::BulletText("R: Reset");
+        ImGui::BulletText("Up/Down: Adjust F");
+        ImGui::BulletText("Left/Right: Adjust k");
+        ImGui::BulletText("ESC: Quit");
+
+        ImGui::End();
+
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     }
 
     void Application::quit() { m_running = false; }
