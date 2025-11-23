@@ -3,18 +3,18 @@
 #include <random>
 
 namespace GreyScott {
-
     Simulation::Simulation(int width, int height,
                            ComputeManager* computeManager) :
-        m_width(width),
-        m_height(height),
-        m_computeManager(computeManager),
-        m_bufferCurrent(nullptr),
-        m_bufferNext(nullptr),
-        m_kernel(nullptr),
-        m_initialized(false) {
-        m_hostData.resize(width * height * 2);
-    }
+        m_width{ width },
+        m_height{ height },
+        m_computeManager{ computeManager },
+        m_bufferCurrent{},
+        m_bufferNext{},
+        m_kernel{},
+        m_initialized{}
+        {
+            m_hostData.resize(width * height * 2);
+        }
 
     Simulation::~Simulation() {
         if (m_kernel) clReleaseKernel(m_kernel);
@@ -24,40 +24,39 @@ namespace GreyScott {
 
     bool Simulation::initialize() {
         if (!m_computeManager || !m_computeManager->isInitialized()) {
-            std::cerr << "ComputeManager not initialized!" << std::endl;
+            std::cerr << "ComputeManager not initialized!\n";
             return false;
         }
 
         m_kernel = m_computeManager->loadKernel("kernels/grey_scott.cl",
                                                 "grey_scott_step");
         if (!m_kernel) {
-            std::cerr << "Failed to load Grey-Scott kernel!" << std::endl;
+            std::cerr << "Failed to load Grey-Scott kernel!\n";
             return false;
         }
 
         createBuffers();
         initializeState();
 
-        std::cout << "Simulation initialized" << std::endl;
-        std::cout << "  Grid: " << m_width << "x" << m_height << std::endl;
+        std::cout << "Simulation initialized\n";
+        std::cout << "  Grid: " << m_width << "x" << m_height << '\n';
         std::cout << "  Parameters: F=" << m_params.F << ", k=" << m_params.k
-                  << ", Du=" << m_params.Du << ", Dv=" << m_params.Dv
-                  << std::endl;
+                  << ", Du=" << m_params.Du << ", Dv=" << m_params.Dv << '\n';
 
         m_initialized = true;
         return true;
     }
 
     void Simulation::createBuffers() {
-        cl_int err;
-        size_t bufferSize = m_width * m_height * 2 * sizeof(float);
+        cl_int err{};
+        size_t bufferSize{ m_width * m_height * 2 * sizeof(float) };
 
         m_bufferCurrent =
             clCreateBuffer(m_computeManager->getContext(), CL_MEM_READ_WRITE,
                            bufferSize, nullptr, &err);
         if (err != CL_SUCCESS) {
             std::cerr << "Failed to create current buffer! Error: " << err
-                      << std::endl;
+                      << '\n';
             return;
         }
 
@@ -65,32 +64,31 @@ namespace GreyScott {
             clCreateBuffer(m_computeManager->getContext(), CL_MEM_READ_WRITE,
                            bufferSize, nullptr, &err);
         if (err != CL_SUCCESS) {
-            std::cerr << "Failed to create next buffer! Error: " << err
-                      << std::endl;
+            std::cerr << "Failed to create next buffer! Error: " << err << '\n';
             return;
         }
     }
 
     void Simulation::initializeState() {
-        std::random_device rd;
+        std::random_device rd{};
         std::mt19937 gen(rd());
         std::uniform_real_distribution<float> dis(0.0f, 0.01f);
 
-        for (int i = 0; i < m_width * m_height; ++i) {
+        for (int i{}; i < m_width * m_height; ++i) {
             m_hostData[i * 2 + 0] = 1.0f;
             m_hostData[i * 2 + 1] = 0.0f;
         }
 
-        int centerX = m_width / 2;
-        int centerY = m_height / 2;
-        int radius = m_width / 10;
+        int centerX{ m_width / 2 };
+        int centerY{ m_height / 2 };
+        int radius{ m_width / 10 };
 
-        for (int y = centerY - radius; y < centerY + radius; ++y) {
-            for (int x = centerX - radius; x < centerX + radius; ++x) {
-                int dx = x - centerX;
-                int dy = y - centerY;
+        for (int y{ centerY - radius }; y < centerY + radius; ++y) {
+            for (int x{ centerX - radius }; x < centerX + radius; ++x) {
+                int dx{ x - centerX };
+                int dy{ y - centerY };
                 if (dx * dx + dy * dy < radius * radius) {
-                    int idx = (y * m_width + x) * 2;
+                    int idx{ (y * m_width + x) * 2 };
                     m_hostData[idx + 0] = 0.5f + dis(gen);
                     m_hostData[idx + 1] = 0.25f + dis(gen);
                 }
@@ -103,14 +101,14 @@ namespace GreyScott {
             nullptr, nullptr);
         if (err != CL_SUCCESS) {
             std::cerr << "Failed to write initial state! Error: " << err
-                      << std::endl;
+                      << '\n';
         }
     }
 
     void Simulation::step() {
         if (!m_initialized) return;
 
-        cl_int err;
+        cl_int err{};
 
         err = clSetKernelArg(m_kernel, 0, sizeof(cl_mem), &m_bufferCurrent);
         err |= clSetKernelArg(m_kernel, 1, sizeof(cl_mem), &m_bufferNext);
@@ -124,17 +122,16 @@ namespace GreyScott {
 
         if (err != CL_SUCCESS) {
             std::cerr << "Failed to set kernel arguments! Error: " << err
-                      << std::endl;
+                      << '\n';
             return;
         }
 
-        size_t globalSize[2] = {(size_t)m_width, (size_t)m_height};
+        size_t globalSize[2]{ (size_t)m_width, (size_t)m_height };
         err = clEnqueueNDRangeKernel(m_computeManager->getQueue(), m_kernel, 2,
                                      nullptr, globalSize, nullptr, 0, nullptr,
                                      nullptr);
         if (err != CL_SUCCESS) {
-            std::cerr << "Failed to enqueue kernel! Error: " << err
-                      << std::endl;
+            std::cerr << "Failed to enqueue kernel! Error: " << err << '\n';
             return;
         }
 
@@ -151,8 +148,7 @@ namespace GreyScott {
             m_width * m_height * 2 * sizeof(float), m_hostData.data(), 0,
             nullptr, nullptr);
         if (err != CL_SUCCESS) {
-            std::cerr << "Failed to read back data! Error: " << err
-                      << std::endl;
+            std::cerr << "Failed to read back data! Error: " << err << '\n';
         }
     }
 

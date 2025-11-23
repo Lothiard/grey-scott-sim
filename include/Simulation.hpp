@@ -4,7 +4,6 @@
 #include <vector>
 
 namespace GreyScott {
-
     struct SimulationParams {
         float Du{ 0.16f };
         float Dv{ 0.08f };
@@ -13,6 +12,17 @@ namespace GreyScott {
         float dt{ 1.0f };
     };
 
+    /**
+     * @brief Manages the Grey-Scott reaction-diffusion simulation state and
+     * computation
+     *
+     * This class handles:
+     * - OpenCL buffer management for U and V concentrations
+     * - Kernel execution for each simulation step
+     * - Initial conditions and state reset
+     * - Parameter management (F, k, Du, Dv, dt)
+     * - Data readback for visualization
+     */
     class Simulation {
     public:
         Simulation(int width, int height, ComputeManager* computeManager);
@@ -27,6 +37,7 @@ namespace GreyScott {
 
         const float* getData() const { return m_hostData.data(); }
         const SimulationParams& getParams() const { return m_params; }
+
         void setParams(const SimulationParams& params) { m_params = params; }
 
         int getWidth() const { return m_width; }

@@ -4,6 +4,14 @@
 #include <GL/gl.h>
 
 namespace GreyScott {
+    /**
+     * @brief Handles OpenGL rendering of the simulation grid
+     *
+     * This class manages:
+     * - Texture creation for displaying simulation data
+     * - Shader programs for rendering
+     * - Quad geometry for full-screen display
+     */
     class Renderer {
     public:
         Renderer(int width, int height);
