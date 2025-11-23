@@ -241,6 +241,36 @@ namespace GreyScott {
                         std::cout << "k = " << params.k << '\n';
                     }
                     break;
+                case SDLK_F1:
+                    if (m_simulation) {
+                        m_simulation->loadPreset(1);
+                        std::cout << "Loaded preset 1: Spots\n";
+                    }
+                    break;
+                case SDLK_F2:
+                    if (m_simulation) {
+                        m_simulation->loadPreset(2);
+                        std::cout << "Loaded preset 2: Stripes\n";
+                    }
+                    break;
+                case SDLK_F3:
+                    if (m_simulation) {
+                        m_simulation->loadPreset(3);
+                        std::cout << "Loaded preset 3: Waves\n";
+                    }
+                    break;
+                case SDLK_F4:
+                    if (m_simulation) {
+                        m_simulation->loadPreset(4);
+                        std::cout << "Loaded preset 4: Chaos\n";
+                    }
+                    break;
+                case SDLK_F5:
+                    if (m_simulation) {
+                        m_simulation->loadPreset(5);
+                        std::cout << "Loaded preset 5: Holes\n";
+                    }
+                    break;
                 default: break;
                 }
                 break;
@@ -300,6 +330,7 @@ namespace GreyScott {
         ImGui::BulletText("R: Reset");
         ImGui::BulletText("Up/Down: Adjust F");
         ImGui::BulletText("Left/Right: Adjust k");
+        ImGui::BulletText("F1-F5: Load Presets");
         ImGui::BulletText("ESC: Quit");
 
         ImGui::End();

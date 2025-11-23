@@ -39,6 +39,7 @@ namespace GreyScott {
         const SimulationParams& getParams() const { return m_params; }
 
         void setParams(const SimulationParams& params) { m_params = params; }
+        void loadPreset(int presetIndex);
 
         int getWidth() const { return m_width; }
         int getHeight() const { return m_height; }
