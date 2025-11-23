@@ -18,7 +18,6 @@ void main() {
 }
 )";
 
-    // Fragment shader that visualizes the U chemical concentration
     const char* fragmentShaderSource = R"(
 #version 460 core
 
@@ -27,13 +26,22 @@ out vec4 FragColor;
 
 uniform sampler2D uTexture;
 
-void main() {
-    // Sample the texture (R channel has U concentration, G has V)
-    float u = texture(uTexture, TexCoord).r;
+vec3 heatMap(float t) {
+    vec3 cold = vec3(0.0, 0.0, 0.3);
+    vec3 mid = vec3(0.8, 0.2, 0.0);
+    vec3 hot = vec3(1.0, 1.0, 0.2);
+    
+    if (t < 0.5) {
+        return mix(cold, mid, t * 2.0);
+    } else {
+        return mix(mid, hot, (t - 0.5) * 2.0);
+    }
+}
 
-    // Simple grayscale visualization for now
-    // Later we can add color mapping
-    FragColor = vec4(u, u, u, 1.0);
+void main() {
+    float u = texture(uTexture, TexCoord).r;
+    vec3 color = heatMap(u);
+    FragColor = vec4(color, 1.0);
 }
 )";
 
