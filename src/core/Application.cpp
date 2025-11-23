@@ -1,17 +1,25 @@
-#include "Application.hpp"
-#include <GL/gl.h>
+// clang-format off
 #include <GL/glew.h>
+#include <GL/gl.h>
+#include "Application.hpp"
+#include "ComputeManager.hpp"
+#include "Renderer.hpp"
+#include "Simulation.hpp"
 #include <iostream>
+// clang-format on
 
 namespace GreyScott {
 
     Application::Application(const Config& config) :
-        m_config(config),
-        m_window(nullptr),
-        m_glContext(nullptr),
-        m_running(false),
-        m_initialized(false),
-        m_lastFrameTime(0) {}
+        m_config{ config },
+        m_window{ nullptr },
+        m_glContext{ nullptr },
+        m_running{ false },
+        m_initialized{ false },
+        m_lastFrameTime{},
+        m_frameCount{},
+        m_fpsTimer{}
+        {}
 
     Application::~Application() {
         if (m_glContext) { SDL_GL_DeleteContext(m_glContext); }
@@ -26,8 +34,27 @@ namespace GreyScott {
         }
 
         if (!initSDL()) { return false; }
-
         if (!initOpenGL()) { return false; }
+
+        m_computeManager = std::make_unique<ComputeManager>();
+        if (!m_computeManager->initialize()) {
+            std::cerr << "Failed to initialize compute manager!" << std::endl;
+            return false;
+        }
+
+        m_renderer =
+            std::make_unique<Renderer>(m_config.gridWidth, m_config.gridHeight);
+        if (!m_renderer->initialize()) {
+            std::cerr << "Failed to initialize renderer!" << std::endl;
+            return false;
+        }
+
+        m_simulation = std::make_unique<Simulation>(
+            m_config.gridWidth, m_config.gridHeight, m_computeManager.get());
+        if (!m_simulation->initialize()) {
+            std::cerr << "Failed to initialize simulation!" << std::endl;
+            return false;
+        }
 
         std::cout << "Application initialized successfully" << std::endl;
         std::cout << "  Window: " << m_config.windowWidth << "x"
@@ -158,17 +185,25 @@ namespace GreyScott {
     }
 
     void Application::update(float deltaTime) {
-        // TODO: Update simulation
-        // This will be implemented in later milestones
-        (void)deltaTime; // Suppress unused parameter warning
+        if (m_simulation) { m_simulation->step(); }
+
+        ++m_frameCount;
+        m_fpsTimer += deltaTime;
+
+        if (m_fpsTimer >= 1.0f) {
+            std::cout << "FPS: " << m_frameCount << std::endl;
+            m_frameCount = 0;
+            m_fpsTimer = 0.0f;
+        }
     }
 
     void Application::render() {
-        // Clear screen
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // TODO: Render simulation
-        // This will be implemented in later milestones
+        if (m_renderer && m_simulation) {
+            m_renderer->updateTexture(m_simulation->getData());
+            m_renderer->render();
+        }
     }
 
     void Application::quit() { m_running = false; }
