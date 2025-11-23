@@ -173,7 +173,16 @@ namespace GreyScott {
             case SDL_QUIT: quit(); break;
 
             case SDL_KEYDOWN:
-                if (event.key.keysym.sym == SDLK_ESCAPE) { quit(); }
+                switch (event.key.keysym.sym) {
+                case SDLK_ESCAPE: quit(); break;
+                case SDLK_r:
+                    if (m_simulation) {
+                        m_simulation->reset();
+                        std::cout << "Simulation reset\n";
+                    }
+                    break;
+                default: break;
+                }
                 break;
 
             default: break;
