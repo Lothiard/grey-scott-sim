@@ -181,6 +181,10 @@ namespace GreyScott {
                         std::cout << "Simulation reset\n";
                     }
                     break;
+                case SDLK_SPACE:
+                    m_paused = !m_paused;
+                    std::cout << (m_paused ? "Paused\n" : "Resumed\n");
+                    break;
                 default: break;
                 }
                 break;
@@ -191,7 +195,7 @@ namespace GreyScott {
     }
 
     void Application::update(float deltaTime) {
-        if (m_simulation) { m_simulation->step(); }
+        if (m_simulation && !m_paused) { m_simulation->step(); }
 
         ++m_frameCount;
         m_fpsTimer += deltaTime;

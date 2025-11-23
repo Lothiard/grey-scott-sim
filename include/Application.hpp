@@ -45,6 +45,7 @@ namespace GreyScott {
         SDL_GLContext m_glContext{};
         bool m_running{};
         bool m_initialized{};
+        bool m_paused{};
 
         uint64_t m_lastFrameTime{};
         int m_frameCount{};
