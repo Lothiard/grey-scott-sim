@@ -341,6 +341,9 @@ namespace GreyScott {
             ImGui::Text("Diffusion U: %.4f", params.Du);
             ImGui::Text("Diffusion V: %.4f", params.Dv);
             ImGui::Separator();
+            
+            ImGui::Text("Implementation: %s", m_useCPU ? "CPU (Serial)" : "GPU (OpenCL)");
+            ImGui::Separator();
         }
 
         ImGui::Text("Status: %s", m_paused ? "PAUSED" : "Running");
@@ -352,6 +355,7 @@ namespace GreyScott {
         ImGui::BulletText("Up/Down: Adjust F");
         ImGui::BulletText("Left/Right: Adjust k");
         ImGui::BulletText("F1-F5: Load Presets");
+        ImGui::BulletText("C: Toggle CPU/GPU");
         ImGui::BulletText("ESC: Quit");
 
         ImGui::End();
