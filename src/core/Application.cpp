@@ -277,6 +277,11 @@ namespace GreyScott {
                     }
                     break;
                 case SDLK_c:
+                    if (m_useCPU) {
+                        m_simulation->syncFrom(m_simulationCPU->getData());
+                    } else {
+                        m_simulationCPU->syncFrom(m_simulation->getData());
+                    }
                     m_useCPU = !m_useCPU;
                     std::cout << "Switched to " << (m_useCPU ? "CPU" : "GPU") << " mode\n";
                     break;

@@ -16,6 +16,7 @@ namespace GreyScott {
         void initialize();
         void step(const SimulationParams& params);
         void reset();
+        void syncFrom(const float* data);
 
         const float* getData() const { return m_data.data(); }
         int getWidth() const { return m_width; }

@@ -85,4 +85,8 @@ namespace GreyScott {
         initializeState();
     }
 
+    void SimulationCPU::syncFrom(const float* data) {
+        std::copy(data, data + m_width * m_height * 2, m_data.begin());
+    }
+
 } // namespace GreyScott

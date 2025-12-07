@@ -154,6 +154,18 @@ namespace GreyScott {
 
     void Simulation::reset() { initializeState(); }
 
+    void Simulation::syncFrom(const float* data) {
+        std::copy(data, data + m_width * m_height * 2, m_hostData.begin());
+        
+        cl_int err = clEnqueueWriteBuffer(
+            m_computeManager->getQueue(), m_bufferCurrent, CL_TRUE, 0,
+            m_width * m_height * 2 * sizeof(float), m_hostData.data(), 0,
+            nullptr, nullptr);
+        if (err != CL_SUCCESS) {
+            std::cerr << "Failed to sync data to GPU! Error: " << err << '\n';
+        }
+    }
+
     void Simulation::loadPreset(int presetIndex) {
         switch (presetIndex) {
         case 1:
