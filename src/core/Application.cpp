@@ -5,6 +5,7 @@
 #include "ComputeManager.hpp"
 #include "Renderer.hpp"
 #include "Simulation.hpp"
+#include "SimulationCPU.hpp"
 #include <imgui.h>
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_opengl3.h>
@@ -63,6 +64,10 @@ namespace GreyScott {
             std::cerr << "Failed to initialize simulation!\n";
             return false;
         }
+
+        m_simulationCPU = std::make_unique<SimulationCPU>(
+            m_config.gridWidth, m_config.gridHeight);
+        m_simulationCPU->initialize();
 
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
@@ -271,6 +276,10 @@ namespace GreyScott {
                         std::cout << "Loaded preset 5: Holes\n";
                     }
                     break;
+                case SDLK_c:
+                    m_useCPU = !m_useCPU;
+                    std::cout << "Switched to " << (m_useCPU ? "CPU" : "GPU") << " mode\n";
+                    break;
                 default: break;
                 }
                 break;
@@ -281,7 +290,13 @@ namespace GreyScott {
     }
 
     void Application::update(float deltaTime) {
-        if (m_simulation && !m_paused) { m_simulation->step(); }
+        if (!m_paused) {
+            if (m_useCPU && m_simulationCPU) {
+                m_simulationCPU->step(m_simulation->getParams());
+            } else if (m_simulation) {
+                m_simulation->step();
+            }
+        }
 
         ++m_frameCount;
         m_fpsTimer += deltaTime;
@@ -297,8 +312,9 @@ namespace GreyScott {
     void Application::render() {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        if (m_renderer && m_simulation) {
-            m_renderer->updateTexture(m_simulation->getData());
+        if (m_renderer) {
+            const float* data{ m_useCPU ? m_simulationCPU->getData() : m_simulation->getData() };
+            m_renderer->updateTexture(data);
             m_renderer->render();
         }
 

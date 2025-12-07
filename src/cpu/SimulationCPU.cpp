@@ -44,16 +44,16 @@ namespace GreyScott {
     }
 
     float SimulationCPU::computeLaplacian(const std::vector<float>& field, int x, int y, int component) {
-        int xm1 = (x - 1 + m_width) % m_width;
-        int xp1 = (x + 1) % m_width;
-        int ym1 = (y - 1 + m_height) % m_height;
-        int yp1 = (y + 1) % m_height;
+        int xm1{ (x - 1 + m_width) % m_width };
+        int xp1{ (x + 1) % m_width };
+        int ym1{ (y - 1 + m_height) % m_height };
+        int yp1{ (y + 1) % m_height };
 
-        int idx = (y * m_width + x) * 2 + component;
-        int left = (y * m_width + xm1) * 2 + component;
-        int right = (y * m_width + xp1) * 2 + component;
-        int up = (ym1 * m_width + x) * 2 + component;
-        int down = (yp1 * m_width + x) * 2 + component;
+        int idx{ (y * m_width + x) * 2 + component };
+        int left{ (y * m_width + xm1) * 2 + component };
+        int right{ (y * m_width + xp1) * 2 + component };
+        int up{ (ym1 * m_width + x) * 2 + component };
+        int down{ (yp1 * m_width + x) * 2 + component };
 
         return field[left] + field[right] + field[up] + field[down] - 4.0f * field[idx];
     }
@@ -61,17 +61,17 @@ namespace GreyScott {
     void SimulationCPU::step(const SimulationParams& params) {
         for (int y{}; y < m_height; ++y) {
             for (int x{}; x < m_width; ++x) {
-                int idx = (y * m_width + x) * 2;
+                int idx{ (y * m_width + x) * 2 };
 
-                float u = m_data[idx + 0];
-                float v = m_data[idx + 1];
+                float u{ m_data[idx + 0] };
+                float v{ m_data[idx + 1] };
 
-                float laplacian_u = computeLaplacian(m_data, x, y, 0);
-                float laplacian_v = computeLaplacian(m_data, x, y, 1);
+                float laplacian_u{ computeLaplacian(m_data, x, y, 0) };
+                float laplacian_v{ computeLaplacian(m_data, x, y, 1) };
 
-                float uvv = u * v * v;
-                float du = params.Du * laplacian_u - uvv + params.F * (1.0f - u);
-                float dv = params.Dv * laplacian_v + uvv - (params.F + params.k) * v;
+                float uvv{ u * v * v };
+                float du{ params.Du * laplacian_u - uvv + params.F * (1.0f - u) };
+                float dv{ params.Dv * laplacian_v + uvv - (params.F + params.k) * v };
 
                 m_dataNext[idx + 0] = std::clamp(u + du * params.dt, 0.0f, 1.0f);
                 m_dataNext[idx + 1] = std::clamp(v + dv * params.dt, 0.0f, 1.0f);

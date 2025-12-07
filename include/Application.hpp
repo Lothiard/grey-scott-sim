@@ -8,6 +8,7 @@ namespace GreyScott {
     class ComputeManager;
     class Renderer;
     class Simulation;
+    class SimulationCPU;
 
     class Application {
     public:
@@ -51,10 +52,12 @@ namespace GreyScott {
         int m_frameCount{};
         float m_fpsTimer{};
         int m_currentFps{};
+        bool m_useCPU{};
 
         std::unique_ptr<ComputeManager> m_computeManager{};
         std::unique_ptr<Renderer> m_renderer{};
-        std::unique_ptr<Simulation> m_simulation;
+        std::unique_ptr<Simulation> m_simulation{};
+        std::unique_ptr<SimulationCPU> m_simulationCPU{};
     };
 
 } // namespace GreyScott

@@ -25,10 +25,10 @@ namespace GreyScott {
         void initializeState();
         float computeLaplacian(const std::vector<float>& field, int x, int y, int component);
 
-        int m_width;
-        int m_height;
-        std::vector<float> m_data;
-        std::vector<float> m_dataNext;
+        int m_width{};
+        int m_height{};
+        std::vector<float> m_data{};
+        std::vector<float> m_dataNext{};
     };
 
 } // namespace GreyScott
