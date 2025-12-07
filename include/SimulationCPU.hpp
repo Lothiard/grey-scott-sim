@@ -19,6 +19,7 @@ namespace GreyScott {
         void syncFrom(const float* data);
 
         const float* getData() const { return m_data.data(); }
+        float getLastComputeTime() const { return m_lastComputeTime; }
         int getWidth() const { return m_width; }
         int getHeight() const { return m_height; }
 
@@ -30,6 +31,7 @@ namespace GreyScott {
         int m_height{};
         std::vector<float> m_data{};
         std::vector<float> m_dataNext{};
+        float m_lastComputeTime{};
     };
 
 } // namespace GreyScott

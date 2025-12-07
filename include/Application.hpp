@@ -53,6 +53,10 @@ namespace GreyScott {
         float m_fpsTimer{};
         int m_currentFps{};
         bool m_useCPU{};
+        
+        float m_computeTimeMs{};
+        float m_avgComputeTimeMs{};
+        int m_computeSamples{};
 
         std::unique_ptr<ComputeManager> m_computeManager{};
         std::unique_ptr<Renderer> m_renderer{};

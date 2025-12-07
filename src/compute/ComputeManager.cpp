@@ -99,9 +99,12 @@ namespace GreyScott {
             return false;
         }
 
-        // Create command queue
+        // Create command queue with profiling enabled
+        cl_command_queue_properties properties[] = {
+            CL_QUEUE_PROPERTIES, CL_QUEUE_PROFILING_ENABLE, 0
+        };
         m_queue = clCreateCommandQueueWithProperties(m_context, m_device,
-                                                     nullptr, &err);
+                                                     properties, &err);
         if (err != CL_SUCCESS) {
             std::cerr << "Failed to create command queue! Error: " << err
                       << std::endl;

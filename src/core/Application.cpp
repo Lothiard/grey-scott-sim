@@ -298,8 +298,17 @@ namespace GreyScott {
         if (!m_paused) {
             if (m_useCPU && m_simulationCPU) {
                 m_simulationCPU->step(m_simulation->getParams());
+                m_computeTimeMs = m_simulationCPU->getLastComputeTime();
             } else if (m_simulation) {
                 m_simulation->step();
+                m_computeTimeMs = m_simulation->getLastComputeTime();
+            }
+            
+            m_avgComputeTimeMs = (m_avgComputeTimeMs * m_computeSamples + m_computeTimeMs) / (m_computeSamples + 1);
+            ++m_computeSamples;
+            if (m_computeSamples > 100) {
+                m_computeSamples = 50;
+                m_avgComputeTimeMs = m_computeTimeMs;
             }
         }
 
@@ -343,6 +352,8 @@ namespace GreyScott {
             ImGui::Separator();
             
             ImGui::Text("Implementation: %s", m_useCPU ? "CPU (Serial)" : "GPU (OpenCL)");
+            ImGui::Text("Compute Time: %.3f ms", m_avgComputeTimeMs);
+            ImGui::Text("Compute FPS: %.1f", 1000.0f / m_avgComputeTimeMs);
             ImGui::Separator();
         }
 

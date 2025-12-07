@@ -2,6 +2,7 @@
 #include "Simulation.hpp"
 #include <algorithm>
 #include <random>
+#include <chrono>
 
 namespace GreyScott {
     SimulationCPU::SimulationCPU(int width, int height) :
@@ -59,6 +60,8 @@ namespace GreyScott {
     }
 
     void SimulationCPU::step(const SimulationParams& params) {
+        auto start{ std::chrono::high_resolution_clock::now() };
+        
         for (int y{}; y < m_height; ++y) {
             for (int x{}; x < m_width; ++x) {
                 int idx{ (y * m_width + x) * 2 };
@@ -79,6 +82,9 @@ namespace GreyScott {
         }
 
         std::swap(m_data, m_dataNext);
+        
+        auto end{ std::chrono::high_resolution_clock::now() };
+        m_lastComputeTime = std::chrono::duration<float, std::milli>(end - start).count();
     }
 
     void SimulationCPU::reset() {
