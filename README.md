@@ -41,8 +41,6 @@ Real-time reaction-diffusion simulation using OpenCL and OpenGL.
       <p align="center"><em>Pattern 8</em></p>
     </td>
     <td width="33%">
-    </td>
-    <td width="33%">
       <img src="assets/9.png" alt="Pattern 9" width="100%">
       <p align="center"><em>Pattern 8</em></p>
     </td>
