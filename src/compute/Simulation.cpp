@@ -127,15 +127,23 @@ namespace GreyScott {
         }
 
         size_t globalSize[2]{ (size_t)m_width, (size_t)m_height };
+        cl_event event;
         err = clEnqueueNDRangeKernel(m_computeManager->getQueue(), m_kernel, 2,
                                      nullptr, globalSize, nullptr, 0, nullptr,
-                                     nullptr);
+                                     &event);
         if (err != CL_SUCCESS) {
             std::cerr << "Failed to enqueue kernel! Error: " << err << '\n';
             return;
         }
 
         clFinish(m_computeManager->getQueue());
+
+        cl_ulong time_start, time_end;
+        clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_START, sizeof(time_start), &time_start, nullptr);
+        clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_END, sizeof(time_end), &time_end, nullptr);
+        m_lastComputeTime = (time_end - time_start) / 1000000.0f;
+        
+        clReleaseEvent(event);
 
         std::swap(m_bufferCurrent, m_bufferNext);
 
@@ -153,6 +161,18 @@ namespace GreyScott {
     }
 
     void Simulation::reset() { initializeState(); }
+
+    void Simulation::syncFrom(const float* data) {
+        std::copy(data, data + m_width * m_height * 2, m_hostData.begin());
+        
+        cl_int err = clEnqueueWriteBuffer(
+            m_computeManager->getQueue(), m_bufferCurrent, CL_TRUE, 0,
+            m_width * m_height * 2 * sizeof(float), m_hostData.data(), 0,
+            nullptr, nullptr);
+        if (err != CL_SUCCESS) {
+            std::cerr << "Failed to sync data to GPU! Error: " << err << '\n';
+        }
+    }
 
     void Simulation::loadPreset(int presetIndex) {
         switch (presetIndex) {

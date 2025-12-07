@@ -34,12 +34,14 @@ namespace GreyScott {
         bool initialize();
         void step();
         void reset();
+        void syncFrom(const float* data);
 
         const float* getData() const { return m_hostData.data(); }
         const SimulationParams& getParams() const { return m_params; }
 
         void setParams(const SimulationParams& params) { m_params = params; }
         void loadPreset(int presetIndex);
+        float getLastComputeTime() const { return m_lastComputeTime; }
 
         int getWidth() const { return m_width; }
         int getHeight() const { return m_height; }
@@ -49,17 +51,18 @@ namespace GreyScott {
         void createBuffers();
         void readBackData();
 
-        int m_width;
-        int m_height;
-        ComputeManager* m_computeManager;
-        SimulationParams m_params;
+        int m_width{};
+        int m_height{};
+        ComputeManager* m_computeManager{};
+        SimulationParams m_params{};
 
-        cl_mem m_bufferCurrent;
-        cl_mem m_bufferNext;
-        cl_kernel m_kernel;
+        cl_mem m_bufferCurrent{};
+        cl_mem m_bufferNext{};
+        cl_kernel m_kernel{};
 
-        std::vector<float> m_hostData;
-        bool m_initialized;
+        std::vector<float> m_hostData{};
+        bool m_initialized{};
+        float m_lastComputeTime{};
     };
 
 } // namespace GreyScott

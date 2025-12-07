@@ -5,6 +5,7 @@
 #include "ComputeManager.hpp"
 #include "Renderer.hpp"
 #include "Simulation.hpp"
+#include "SimulationCPU.hpp"
 #include <imgui.h>
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_opengl3.h>
@@ -63,6 +64,10 @@ namespace GreyScott {
             std::cerr << "Failed to initialize simulation!\n";
             return false;
         }
+
+        m_simulationCPU = std::make_unique<SimulationCPU>(
+            m_config.gridWidth, m_config.gridHeight);
+        m_simulationCPU->initialize();
 
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
@@ -271,6 +276,15 @@ namespace GreyScott {
                         std::cout << "Loaded preset 5: Holes\n";
                     }
                     break;
+                case SDLK_c:
+                    if (m_useCPU) {
+                        m_simulation->syncFrom(m_simulationCPU->getData());
+                    } else {
+                        m_simulationCPU->syncFrom(m_simulation->getData());
+                    }
+                    m_useCPU = !m_useCPU;
+                    std::cout << "Switched to " << (m_useCPU ? "CPU" : "GPU") << " mode\n";
+                    break;
                 default: break;
                 }
                 break;
@@ -281,7 +295,22 @@ namespace GreyScott {
     }
 
     void Application::update(float deltaTime) {
-        if (m_simulation && !m_paused) { m_simulation->step(); }
+        if (!m_paused) {
+            if (m_useCPU && m_simulationCPU) {
+                m_simulationCPU->step(m_simulation->getParams());
+                m_computeTimeMs = m_simulationCPU->getLastComputeTime();
+            } else if (m_simulation) {
+                m_simulation->step();
+                m_computeTimeMs = m_simulation->getLastComputeTime();
+            }
+            
+            m_avgComputeTimeMs = (m_avgComputeTimeMs * m_computeSamples + m_computeTimeMs) / (m_computeSamples + 1);
+            ++m_computeSamples;
+            if (m_computeSamples > 100) {
+                m_computeSamples = 50;
+                m_avgComputeTimeMs = m_computeTimeMs;
+            }
+        }
 
         ++m_frameCount;
         m_fpsTimer += deltaTime;
@@ -297,8 +326,9 @@ namespace GreyScott {
     void Application::render() {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        if (m_renderer && m_simulation) {
-            m_renderer->updateTexture(m_simulation->getData());
+        if (m_renderer) {
+            const float* data{ m_useCPU ? m_simulationCPU->getData() : m_simulation->getData() };
+            m_renderer->updateTexture(data);
             m_renderer->render();
         }
 
@@ -320,6 +350,11 @@ namespace GreyScott {
             ImGui::Text("Diffusion U: %.4f", params.Du);
             ImGui::Text("Diffusion V: %.4f", params.Dv);
             ImGui::Separator();
+            
+            ImGui::Text("Implementation: %s", m_useCPU ? "CPU (Serial)" : "GPU (OpenCL)");
+            ImGui::Text("Compute Time: %.3f ms", m_avgComputeTimeMs);
+            ImGui::Text("Compute FPS: %.1f", 1000.0f / m_avgComputeTimeMs);
+            ImGui::Separator();
         }
 
         ImGui::Text("Status: %s", m_paused ? "PAUSED" : "Running");
@@ -331,6 +366,7 @@ namespace GreyScott {
         ImGui::BulletText("Up/Down: Adjust F");
         ImGui::BulletText("Left/Right: Adjust k");
         ImGui::BulletText("F1-F5: Load Presets");
+        ImGui::BulletText("C: Toggle CPU/GPU");
         ImGui::BulletText("ESC: Quit");
 
         ImGui::End();
