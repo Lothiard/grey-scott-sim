@@ -6,45 +6,34 @@ Real-time reaction-diffusion simulation using OpenCL and OpenGL.
   <tr>
     <td width="33%">
       <img src="assets/1.png" alt="Pattern 1" width="100%">
-      <p align="center"><em>Pattern 1</em></p>
     </td>
     <td width="33%">
       <img src="assets/2.png" alt="Pattern 2" width="100%">
-      <p align="center"><em>Pattern 2</em></p>
     </td>
     <td width="33%">
       <img src="assets/3.png" alt="Pattern 3" width="100%">
-      <p align="center"><em>Pattern 3</em></p>
     </td>
   </tr>
   <tr>
     <td width="33%">
       <img src="assets/4.png" alt="Pattern 4" width="100%">
-      <p align="center"><em>Pattern 4</em></p>
     </td>
     <td width="33%">
       <img src="assets/5.png" alt="Pattern 5" width="100%">
-      <p align="center"><em>Pattern 5</em></p>
     </td>
     <td width="33%">
       <img src="assets/6.png" alt="Pattern 6" width="100%">
-      <p align="center"><em>Pattern 6</em></p>
     </td>
   </tr>
   <tr>
     <td width="33%">
       <img src="assets/7.png" alt="Pattern 7" width="100%">
-      <p align="center"><em>Pattern 7</em></p>
     </td>
     <td width="33%">
       <img src="assets/8.png" alt="Pattern 8" width="100%">
-      <p align="center"><em>Pattern 8</em></p>
     </td>
     <td width="33%">
       <img src="assets/9.png" alt="Pattern 9" width="100%">
-      <p align="center"><em>Pattern 8</em></p>
-    </td>
-    <td width="33%">
     </td>
   </tr>
 </table>
