@@ -24,7 +24,6 @@ namespace GreyScott {
         bool initialize();
         void updateTexture(const float* data);
         void render();
-        void renderText(const char* text, float x, float y, float scale);
         GLuint getTextureID() const { return m_texture; }
 
     private:
@@ -39,7 +38,7 @@ namespace GreyScott {
         // OpenGL resources
         GLuint m_texture{};
         GLuint m_vao{}; // Vertex Array Object
-        GLuint m_vbo{}; // Vertex Buffer Objec{}t
+        GLuint m_vbo{}; // Vertex Buffer Object
         GLuint m_shaderProgram{};
         GLuint m_vertexShader{};
         GLuint m_fragmentShader{};

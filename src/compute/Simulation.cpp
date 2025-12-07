@@ -8,10 +8,10 @@ namespace GreyScott {
         m_width{ width },
         m_height{ height },
         m_computeManager{ computeManager },
-        m_bufferCurrent{},
-        m_bufferNext{},
-        m_kernel{},
-        m_initialized{}
+        m_bufferCurrent{ nullptr },
+        m_bufferNext{ nullptr },
+        m_kernel{ nullptr },
+        m_initialized{ false }
         {
             m_hostData.resize(width * height * 2);
         }
@@ -126,8 +126,8 @@ namespace GreyScott {
             return;
         }
 
-        size_t globalSize[2]{ (size_t)m_width, (size_t)m_height };
-        cl_event event;
+        size_t globalSize[2]{ static_cast<size_t>(m_width), static_cast<size_t>(m_height) };
+        cl_event event{};
         err = clEnqueueNDRangeKernel(m_computeManager->getQueue(), m_kernel, 2,
                                      nullptr, globalSize, nullptr, 0, nullptr,
                                      &event);

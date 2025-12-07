@@ -6,11 +6,11 @@
 
 namespace GreyScott {
     ComputeManager::ComputeManager() :
-        m_initialized{},
-        m_platform{},
-        m_device{},
-        m_context{},
-        m_queue{}
+        m_initialized{ false },
+        m_platform{ nullptr },
+        m_device{ nullptr },
+        m_context{ nullptr },
+        m_queue{ nullptr }
         {}
 
     ComputeManager::~ComputeManager() {
@@ -133,14 +133,6 @@ namespace GreyScott {
 
         m_initialized = true;
         return true;
-    }
-
-    bool ComputeManager::initialize(int platformIndex, int deviceIndex) {
-        // TODO: Implement specific platform/device selection
-        // For now, just use default initialization
-        (void)platformIndex;
-        (void)deviceIndex;
-        return initialize();
     }
 
     std::vector<DeviceInfo> ComputeManager::queryDevices() const {

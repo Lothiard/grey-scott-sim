@@ -37,7 +37,6 @@ namespace GreyScott {
         ComputeManager& operator=(const ComputeManager&) = delete;
 
         bool initialize();
-        bool initialize(int platformIndex, int deviceIndex);
         std::vector<DeviceInfo> queryDevices() const;
         void printDeviceInfo() const;
 

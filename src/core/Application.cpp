@@ -14,16 +14,15 @@
 // clang-format on
 
 namespace GreyScott {
-
     Application::Application(const Config& config) :
         m_config{ config },
         m_window{ nullptr },
         m_glContext{ nullptr },
         m_running{ false },
         m_initialized{ false },
-        m_lastFrameTime{},
-        m_frameCount{},
-        m_fpsTimer{}
+        m_lastFrameTime{ 0 },
+        m_frameCount{ 0 },
+        m_fpsTimer{ 0.0f }
         {}
 
     Application::~Application() {

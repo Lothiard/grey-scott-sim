@@ -50,13 +50,13 @@ void main() {
     Renderer::Renderer(int width, int height) :
         m_width{ width },
         m_height{ height },
-        m_initialized{},
-        m_texture{},
-        m_vao{},
-        m_vbo{},
-        m_shaderProgram{},
-        m_vertexShader{},
-        m_fragmentShader{}
+        m_initialized{ false },
+        m_texture{ 0 },
+        m_vao{ 0 },
+        m_vbo{ 0 },
+        m_shaderProgram{ 0 },
+        m_vertexShader{ 0 },
+        m_fragmentShader{ 0 }
         {}
 
     Renderer::~Renderer() {
@@ -229,14 +229,4 @@ void main() {
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindVertexArray(0);
     }
-
-    void Renderer::renderText(const char* text, float x, float y, float scale) {
-        // Simple text rendering using window title for now
-        // Full implementation would require font texture atlas
-        (void)text;
-        (void)x;
-        (void)y;
-        (void)scale;
-    }
-
 } // namespace GreyScott
