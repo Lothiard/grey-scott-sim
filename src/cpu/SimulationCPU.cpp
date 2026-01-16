@@ -1,5 +1,4 @@
 #include "SimulationCPU.hpp"
-#include "Simulation.hpp"
 #include <algorithm>
 #include <random>
 #include <chrono>
@@ -61,7 +60,7 @@ namespace GreyScott {
 
     void SimulationCPU::step(const SimulationParams& params) {
         auto start{ std::chrono::high_resolution_clock::now() };
-        
+
         for (int y{}; y < m_height; ++y) {
             for (int x{}; x < m_width; ++x) {
                 int idx{ (y * m_width + x) * 2 };
@@ -82,7 +81,7 @@ namespace GreyScott {
         }
 
         std::swap(m_data, m_dataNext);
-        
+
         auto end{ std::chrono::high_resolution_clock::now() };
         m_lastComputeTime = std::chrono::duration<float, std::milli>(end - start).count();
     }
@@ -93,6 +92,33 @@ namespace GreyScott {
 
     void SimulationCPU::syncFrom(const float* data) {
         std::copy(data, data + m_width * m_height * 2, m_data.begin());
+    }
+
+    void SimulationCPU::loadPreset(int presetIndex) {
+        switch (presetIndex) {
+        case 1:
+            m_params.F = 0.055f;
+            m_params.k = 0.062f;
+            break;
+        case 2:
+            m_params.F = 0.039f;
+            m_params.k = 0.058f;
+            break;
+        case 3:
+            m_params.F = 0.026f;
+            m_params.k = 0.051f;
+            break;
+        case 4:
+            m_params.F = 0.018f;
+            m_params.k = 0.051f;
+            break;
+        case 5:
+            m_params.F = 0.014f;
+            m_params.k = 0.047f;
+            break;
+        default:
+            break;
+        }
     }
 
 } // namespace GreyScott

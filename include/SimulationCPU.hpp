@@ -1,10 +1,9 @@
 #pragma once
 
+#include "SimulationParams.hpp"
 #include <vector>
 
 namespace GreyScott {
-    struct SimulationParams;
-
     class SimulationCPU {
     public:
         SimulationCPU(int width, int height);
@@ -19,6 +18,9 @@ namespace GreyScott {
         void syncFrom(const float* data);
 
         const float* getData() const { return m_data.data(); }
+        const SimulationParams& getParams() const { return m_params; }
+        void setParams(const SimulationParams& params) { m_params = params; }
+        void loadPreset(int presetIndex);
         float getLastComputeTime() const { return m_lastComputeTime; }
         int getWidth() const { return m_width; }
         int getHeight() const { return m_height; }
@@ -31,6 +33,7 @@ namespace GreyScott {
         int m_height{};
         std::vector<float> m_data{};
         std::vector<float> m_dataNext{};
+        SimulationParams m_params{};
         float m_lastComputeTime{};
     };
 
