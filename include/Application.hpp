@@ -5,9 +5,11 @@
 #include <string>
 
 namespace GreyScott {
+#ifdef USE_OPENCL
     class ComputeManager;
-    class Renderer;
     class Simulation;
+#endif
+    class Renderer;
     class SimulationCPU;
 
     class Application {
@@ -53,14 +55,16 @@ namespace GreyScott {
         float m_fpsTimer{};
         int m_currentFps{};
         bool m_useCPU{};
-        
+
         float m_computeTimeMs{};
         float m_avgComputeTimeMs{};
         int m_computeSamples{};
 
+#ifdef USE_OPENCL
         std::unique_ptr<ComputeManager> m_computeManager{};
-        std::unique_ptr<Renderer> m_renderer{};
         std::unique_ptr<Simulation> m_simulation{};
+#endif
+        std::unique_ptr<Renderer> m_renderer{};
         std::unique_ptr<SimulationCPU> m_simulationCPU{};
     };
 

@@ -1,17 +1,31 @@
 // clang-format off
 #include <GL/glew.h>
-#include <GL/gl.h>
+// Note: GL/gl.h is included by glew.h
 #include "Application.hpp"
+#ifdef USE_OPENCL
 #include "ComputeManager.hpp"
-#include "Renderer.hpp"
 #include "Simulation.hpp"
+#endif
+#include "Renderer.hpp"
 #include "SimulationCPU.hpp"
+#include "SimulationParams.hpp"
 #include <imgui.h>
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_opengl3.h>
 #include <iostream>
 #include <algorithm>
 // clang-format on
+
+// Platform-specific OpenGL version
+#ifdef __APPLE__
+    #define GL_MAJOR_VERSION_REQUIRED 4
+    #define GL_MINOR_VERSION_REQUIRED 1
+    #define GLSL_VERSION_STRING "#version 410"
+#else
+    #define GL_MAJOR_VERSION_REQUIRED 4
+    #define GL_MINOR_VERSION_REQUIRED 6
+    #define GLSL_VERSION_STRING "#version 460"
+#endif
 
 namespace GreyScott {
     Application::Application(const Config& config) :
@@ -44,11 +58,13 @@ namespace GreyScott {
         if (!initSDL()) { return false; }
         if (!initOpenGL()) { return false; }
 
+#ifdef USE_OPENCL
         m_computeManager = std::make_unique<ComputeManager>();
         if (!m_computeManager->initialize()) {
             std::cerr << "Failed to initialize compute manager!\n";
             return false;
         }
+#endif
 
         m_renderer =
             std::make_unique<Renderer>(m_config.gridWidth, m_config.gridHeight);
@@ -57,16 +73,24 @@ namespace GreyScott {
             return false;
         }
 
+#ifdef USE_OPENCL
         m_simulation = std::make_unique<Simulation>(
             m_config.gridWidth, m_config.gridHeight, m_computeManager.get());
         if (!m_simulation->initialize()) {
             std::cerr << "Failed to initialize simulation!\n";
             return false;
         }
+#endif
 
         m_simulationCPU = std::make_unique<SimulationCPU>(
             m_config.gridWidth, m_config.gridHeight);
         m_simulationCPU->initialize();
+
+#ifndef USE_OPENCL
+        // Force CPU mode when OpenCL is not available
+        m_useCPU = true;
+        std::cout << "OpenCL not available - using CPU-only mode\n";
+#endif
 
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
@@ -76,7 +100,7 @@ namespace GreyScott {
         ImGui::StyleColorsDark();
 
         ImGui_ImplSDL2_InitForOpenGL(m_window, m_glContext);
-        ImGui_ImplOpenGL3_Init("#version 460");
+        ImGui_ImplOpenGL3_Init(GLSL_VERSION_STRING);
 
         std::cout << "Application initialized successfully\n";
         std::cout << "  Window: " << m_config.windowWidth << "x"
@@ -95,13 +119,17 @@ namespace GreyScott {
             return false;
         }
 
-        // Set OpenGL attributes
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6);
+        // Set OpenGL attributes (platform-specific version)
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, GL_MAJOR_VERSION_REQUIRED);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, GL_MINOR_VERSION_REQUIRED);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,
                             SDL_GL_CONTEXT_PROFILE_CORE);
         SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
         SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+
+#ifdef __APPLE__
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+#endif
 
         // Create window
         m_window = SDL_CreateWindow(
@@ -192,7 +220,7 @@ namespace GreyScott {
         SDL_Event event{};
         while (SDL_PollEvent(&event)) {
             ImGui_ImplSDL2_ProcessEvent(&event);
-            
+
             switch (event.type) {
             case SDL_QUIT: quit(); break;
 
@@ -200,82 +228,112 @@ namespace GreyScott {
                 switch (event.key.keysym.sym) {
                 case SDLK_ESCAPE: quit(); break;
                 case SDLK_r:
-                    if (m_simulation) {
+#ifdef USE_OPENCL
+                    if (!m_useCPU && m_simulation) {
                         m_simulation->reset();
-                        std::cout << "Simulation reset\n";
+                    } else
+#endif
+                    if (m_simulationCPU) {
+                        m_simulationCPU->reset();
                     }
+                    std::cout << "Simulation reset\n";
                     break;
                 case SDLK_SPACE:
                     m_paused = !m_paused;
                     std::cout << (m_paused ? "Paused\n" : "Resumed\n");
                     break;
                 case SDLK_UP:
-                    if (m_simulation) {
+#ifdef USE_OPENCL
+                    if (!m_useCPU && m_simulation) {
                         auto params{ m_simulation->getParams() };
                         params.F += 0.001f;
                         params.F = std::min(params.F, 0.1f);
                         m_simulation->setParams(params);
                         std::cout << "F = " << params.F << '\n';
+                    } else
+#endif
+                    if (m_simulationCPU) {
+                        auto params{ m_simulationCPU->getParams() };
+                        params.F += 0.001f;
+                        params.F = std::min(params.F, 0.1f);
+                        m_simulationCPU->setParams(params);
+                        std::cout << "F = " << params.F << '\n';
                     }
                     break;
                 case SDLK_DOWN:
-                    if (m_simulation) {
+#ifdef USE_OPENCL
+                    if (!m_useCPU && m_simulation) {
                         auto params{ m_simulation->getParams() };
                         params.F -= 0.001f;
                         params.F = std::max(params.F, 0.0f);
                         m_simulation->setParams(params);
                         std::cout << "F = " << params.F << '\n';
+                    } else
+#endif
+                    if (m_simulationCPU) {
+                        auto params{ m_simulationCPU->getParams() };
+                        params.F -= 0.001f;
+                        params.F = std::max(params.F, 0.0f);
+                        m_simulationCPU->setParams(params);
+                        std::cout << "F = " << params.F << '\n';
                     }
                     break;
                 case SDLK_RIGHT:
-                    if (m_simulation) {
+#ifdef USE_OPENCL
+                    if (!m_useCPU && m_simulation) {
                         auto params{ m_simulation->getParams() };
                         params.k += 0.001f;
                         params.k = std::min(params.k, 0.1f);
                         m_simulation->setParams(params);
                         std::cout << "k = " << params.k << '\n';
+                    } else
+#endif
+                    if (m_simulationCPU) {
+                        auto params{ m_simulationCPU->getParams() };
+                        params.k += 0.001f;
+                        params.k = std::min(params.k, 0.1f);
+                        m_simulationCPU->setParams(params);
+                        std::cout << "k = " << params.k << '\n';
                     }
                     break;
                 case SDLK_LEFT:
-                    if (m_simulation) {
+#ifdef USE_OPENCL
+                    if (!m_useCPU && m_simulation) {
                         auto params{ m_simulation->getParams() };
                         params.k -= 0.001f;
                         params.k = std::max(params.k, 0.0f);
                         m_simulation->setParams(params);
                         std::cout << "k = " << params.k << '\n';
+                    } else
+#endif
+                    if (m_simulationCPU) {
+                        auto params{ m_simulationCPU->getParams() };
+                        params.k -= 0.001f;
+                        params.k = std::max(params.k, 0.0f);
+                        m_simulationCPU->setParams(params);
+                        std::cout << "k = " << params.k << '\n';
                     }
                     break;
                 case SDLK_F1:
-                    if (m_simulation) {
-                        m_simulation->loadPreset(1);
-                        std::cout << "Loaded preset 1: Spots\n";
-                    }
-                    break;
                 case SDLK_F2:
-                    if (m_simulation) {
-                        m_simulation->loadPreset(2);
-                        std::cout << "Loaded preset 2: Stripes\n";
-                    }
-                    break;
                 case SDLK_F3:
-                    if (m_simulation) {
-                        m_simulation->loadPreset(3);
-                        std::cout << "Loaded preset 3: Waves\n";
-                    }
-                    break;
                 case SDLK_F4:
-                    if (m_simulation) {
-                        m_simulation->loadPreset(4);
-                        std::cout << "Loaded preset 4: Chaos\n";
+                case SDLK_F5: {
+                    int preset = event.key.keysym.sym - SDLK_F1 + 1;
+#ifdef USE_OPENCL
+                    if (!m_useCPU && m_simulation) {
+                        m_simulation->loadPreset(preset);
+                    } else
+#endif
+                    if (m_simulationCPU) {
+                        m_simulationCPU->loadPreset(preset);
                     }
+                    const char* presetNames[] = { "", "Spots", "Stripes", "Waves", "Chaos", "Holes" };
+                    std::cout << "Loaded preset " << preset << ": " << presetNames[preset] << '\n';
                     break;
-                case SDLK_F5:
-                    if (m_simulation) {
-                        m_simulation->loadPreset(5);
-                        std::cout << "Loaded preset 5: Holes\n";
-                    }
-                    break;
+                }
                 case SDLK_c:
+#ifdef USE_OPENCL
                     if (m_useCPU) {
                         m_simulation->syncFrom(m_simulationCPU->getData());
                     } else {
@@ -283,6 +341,9 @@ namespace GreyScott {
                     }
                     m_useCPU = !m_useCPU;
                     std::cout << "Switched to " << (m_useCPU ? "CPU" : "GPU") << " mode\n";
+#else
+                    std::cout << "OpenCL not available - CPU-only mode\n";
+#endif
                     break;
                 default: break;
                 }
@@ -295,14 +356,17 @@ namespace GreyScott {
 
     void Application::update(float deltaTime) {
         if (!m_paused) {
-            if (m_useCPU && m_simulationCPU) {
-                m_simulationCPU->step(m_simulation->getParams());
-                m_computeTimeMs = m_simulationCPU->getLastComputeTime();
-            } else if (m_simulation) {
+#ifdef USE_OPENCL
+            if (!m_useCPU && m_simulation) {
                 m_simulation->step();
                 m_computeTimeMs = m_simulation->getLastComputeTime();
+            } else
+#endif
+            if (m_simulationCPU) {
+                m_simulationCPU->step(m_simulationCPU->getParams());
+                m_computeTimeMs = m_simulationCPU->getLastComputeTime();
             }
-            
+
             m_avgComputeTimeMs = (m_avgComputeTimeMs * m_computeSamples + m_computeTimeMs) / (m_computeSamples + 1);
             ++m_computeSamples;
             if (m_computeSamples > 100) {
@@ -326,7 +390,12 @@ namespace GreyScott {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         if (m_renderer) {
-            const float* data{ m_useCPU ? m_simulationCPU->getData() : m_simulation->getData() };
+            const float* data;
+#ifdef USE_OPENCL
+            data = m_useCPU ? m_simulationCPU->getData() : m_simulation->getData();
+#else
+            data = m_simulationCPU->getData();
+#endif
             m_renderer->updateTexture(data);
             m_renderer->render();
         }
@@ -342,19 +411,30 @@ namespace GreyScott {
         ImGui::Text("FPS: %d", m_currentFps);
         ImGui::Separator();
 
-        if (m_simulation) {
-            auto params = m_simulation->getParams();
-            ImGui::Text("Feed Rate (F): %.4f", params.F);
-            ImGui::Text("Kill Rate (k): %.4f", params.k);
-            ImGui::Text("Diffusion U: %.4f", params.Du);
-            ImGui::Text("Diffusion V: %.4f", params.Dv);
-            ImGui::Separator();
-            
-            ImGui::Text("Implementation: %s", m_useCPU ? "CPU (Serial)" : "GPU (OpenCL)");
-            ImGui::Text("Compute Time: %.3f ms", m_avgComputeTimeMs);
-            ImGui::Text("Compute FPS: %.1f", 1000.0f / m_avgComputeTimeMs);
-            ImGui::Separator();
+        SimulationParams params;
+#ifdef USE_OPENCL
+        if (!m_useCPU && m_simulation) {
+            params = m_simulation->getParams();
+        } else
+#endif
+        if (m_simulationCPU) {
+            params = m_simulationCPU->getParams();
         }
+
+        ImGui::Text("Feed Rate (F): %.4f", params.F);
+        ImGui::Text("Kill Rate (k): %.4f", params.k);
+        ImGui::Text("Diffusion U: %.4f", params.Du);
+        ImGui::Text("Diffusion V: %.4f", params.Dv);
+        ImGui::Separator();
+
+#ifdef USE_OPENCL
+        ImGui::Text("Implementation: %s", m_useCPU ? "CPU (Serial)" : "GPU (OpenCL)");
+#else
+        ImGui::Text("Implementation: CPU (Serial)");
+#endif
+        ImGui::Text("Compute Time: %.3f ms", m_avgComputeTimeMs);
+        ImGui::Text("Compute FPS: %.1f", 1000.0f / m_avgComputeTimeMs);
+        ImGui::Separator();
 
         ImGui::Text("Status: %s", m_paused ? "PAUSED" : "Running");
         ImGui::Separator();
@@ -365,7 +445,9 @@ namespace GreyScott {
         ImGui::BulletText("Up/Down: Adjust F");
         ImGui::BulletText("Left/Right: Adjust k");
         ImGui::BulletText("F1-F5: Load Presets");
+#ifdef USE_OPENCL
         ImGui::BulletText("C: Toggle CPU/GPU");
+#endif
         ImGui::BulletText("ESC: Quit");
 
         ImGui::End();
