@@ -2,10 +2,17 @@
 #include <GL/glew.h>
 #include <iostream>
 
+// Platform-specific GLSL version
+#ifdef __APPLE__
+    #define GLSL_VERSION "#version 410 core"
+#else
+    #define GLSL_VERSION "#version 460 core"
+#endif
+
 namespace GreyScott {
     // Simple vertex shader for full-screen quad
-    const char* vertexShaderSource = R"(
-#version 460 core
+    const char* vertexShaderSource =
+GLSL_VERSION R"(
 
 layout(location = 0) in vec2 aPos;
 layout(location = 1) in vec2 aTexCoord;
@@ -18,8 +25,8 @@ void main() {
 }
 )";
 
-    const char* fragmentShaderSource = R"(
-#version 460 core
+    const char* fragmentShaderSource =
+GLSL_VERSION R"(
 
 in vec2 TexCoord;
 out vec4 FragColor;
@@ -30,9 +37,9 @@ vec3 heatMap(float t) {
     vec3 purple = vec3(0.15, 0.0, 0.2);
     vec3 green = vec3(0.0, 0.6, 0.2);
     vec3 yellow = vec3(1.0, 0.95, 0.3);
-    
+
     t = 1.0 - t;
-    
+
     if (t < 0.5) {
         return mix(purple, green, t * 2.0);
     } else {

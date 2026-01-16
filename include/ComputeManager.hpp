@@ -1,5 +1,7 @@
 #pragma once
 
+#ifdef USE_OPENCL
+
 #define CL_TARGET_OPENCL_VERSION 300
 #include <CL/cl.h>
 #include <string>
@@ -68,3 +70,5 @@ namespace GreyScott {
     };
 
 } // namespace GreyScott
+
+#endif // USE_OPENCL

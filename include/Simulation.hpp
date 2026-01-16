@@ -1,17 +1,12 @@
 #pragma once
 
+#ifdef USE_OPENCL
+
 #include "ComputeManager.hpp"
+#include "SimulationParams.hpp"
 #include <vector>
 
 namespace GreyScott {
-    struct SimulationParams {
-        float Du{ 0.16f };
-        float Dv{ 0.08f };
-        float F{ 0.055f };
-        float k{ 0.062f };
-        float dt{ 1.0f };
-    };
-
     /**
      * @brief Manages the Grey-Scott reaction-diffusion simulation state and
      * computation
@@ -66,3 +61,5 @@ namespace GreyScott {
     };
 
 } // namespace GreyScott
+
+#endif // USE_OPENCL
