@@ -1,7 +1,7 @@
 #pragma once
 
 #include <GL/glew.h>
-#include <GL/gl.h>
+// Note: GL/gl.h is included by glew.h
 
 namespace GreyScott {
     /**
