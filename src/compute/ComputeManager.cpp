@@ -1,3 +1,5 @@
+#ifdef USE_OPENCL
+
 #include "ComputeManager.hpp"
 #include <cstring>
 #include <fstream>
@@ -321,3 +323,5 @@ namespace GreyScott {
     }
 
 } // namespace GreyScott
+
+#endif // USE_OPENCL
