@@ -293,6 +293,20 @@ namespace GreyScott {
 
     void Simulation::reset() { initializeState(); }
 
+    void Simulation::forceReadBack() {
+        if (m_useGLInterop) {
+            cl_int err = clEnqueueReadBuffer(
+                m_computeManager->getQueue(), m_bufferCurrent, CL_TRUE, 0,
+                m_width * m_height * 2 * sizeof(float), m_hostData.data(), 0,
+                nullptr, nullptr);
+            if (err != CL_SUCCESS) {
+                std::cerr << "Failed to force read back data! Error: " << err << '\n';
+            }
+        } else {
+            readBackData();
+        }
+    }
+
     void Simulation::syncFrom(const float* data) {
         std::copy(data, data + m_width * m_height * 2, m_hostData.begin());
 
@@ -302,7 +316,28 @@ namespace GreyScott {
             nullptr, nullptr);
         if (err != CL_SUCCESS) {
             std::cerr << "Failed to sync data to GPU! Error: " << err << '\n';
+            return;
         }
+
+#ifndef __APPLE__
+        if (m_useGLInterop) {
+            err = clEnqueueAcquireGLObjects(m_computeManager->getQueue(), 1,
+                                           &m_clImageCurrent, 0, nullptr, nullptr);
+            if (err == CL_SUCCESS) {
+                size_t origin[3] = {0, 0, 0};
+                size_t region[3] = {static_cast<size_t>(m_width),
+                                   static_cast<size_t>(m_height), 1};
+                
+                err = clEnqueueCopyBufferToImage(m_computeManager->getQueue(),
+                                                m_bufferCurrent, m_clImageCurrent,
+                                                0, origin, region, 0, nullptr, nullptr);
+                
+                clEnqueueReleaseGLObjects(m_computeManager->getQueue(), 1,
+                                         &m_clImageCurrent, 0, nullptr, nullptr);
+                clFinish(m_computeManager->getQueue());
+            }
+        }
+#endif
     }
 
     void Simulation::loadPreset(int presetIndex) {

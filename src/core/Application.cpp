@@ -346,6 +346,7 @@ namespace GreyScott {
                     if (m_useCPU) {
                         m_simulation->syncFrom(m_simulationCPU->getData());
                     } else {
+                        m_simulation->forceReadBack();
                         m_simulationCPU->syncFrom(m_simulation->getData());
                     }
                     m_useCPU = !m_useCPU;

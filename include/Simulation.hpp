@@ -30,6 +30,7 @@ namespace GreyScott {
         void step();
         void reset();
         void syncFrom(const float* data);
+        void forceReadBack();
 
         const float* getData() const { return m_hostData.data(); }
         const SimulationParams& getParams() const { return m_params; }
