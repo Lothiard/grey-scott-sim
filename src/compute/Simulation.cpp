@@ -4,12 +4,22 @@
 #include <iostream>
 #include <random>
 
+#include <GL/glew.h>
+
+#ifndef __APPLE__
+    #include <CL/cl_gl.h>
+#endif
+
 namespace GreyScott {
     Simulation::Simulation(int width, int height,
                            ComputeManager* computeManager) :
         m_width{ width },
         m_height{ height },
         m_computeManager{ computeManager },
+        m_sharedTexture{ 0 },
+        m_clImageCurrent{ nullptr },
+        m_clImageNext{ nullptr },
+        m_useGLInterop{ false },
         m_bufferCurrent{ nullptr },
         m_bufferNext{ nullptr },
         m_kernel{ nullptr },
@@ -20,6 +30,11 @@ namespace GreyScott {
 
     Simulation::~Simulation() {
         if (m_kernel) clReleaseKernel(m_kernel);
+        
+        if (m_clImageCurrent) clReleaseMemObject(m_clImageCurrent);
+        if (m_clImageNext) clReleaseMemObject(m_clImageNext);
+        if (m_sharedTexture) glDeleteTextures(1, &m_sharedTexture);
+        
         if (m_bufferCurrent) clReleaseMemObject(m_bufferCurrent);
         if (m_bufferNext) clReleaseMemObject(m_bufferNext);
     }
@@ -51,23 +66,69 @@ namespace GreyScott {
 
     void Simulation::createBuffers() {
         cl_int err{};
-        size_t bufferSize{ m_width * m_height * 2 * sizeof(float) };
-
-        m_bufferCurrent =
-            clCreateBuffer(m_computeManager->getContext(), CL_MEM_READ_WRITE,
-                           bufferSize, nullptr, &err);
-        if (err != CL_SUCCESS) {
-            std::cerr << "Failed to create current buffer! Error: " << err
-                      << '\n';
-            return;
+        
+        m_useGLInterop = m_computeManager->hasGLInterop();
+        
+#ifndef __APPLE__
+        if (m_useGLInterop) {
+            std::cout << "Creating GL-shared textures for zero-copy rendering\n";
+            
+            glGenTextures(1, &m_sharedTexture);
+            glBindTexture(GL_TEXTURE_2D, m_sharedTexture);
+            
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RG32F, m_width, m_height, 0,
+                        GL_RG, GL_FLOAT, nullptr);
+            
+            GLenum glErr = glGetError();
+            if (glErr != GL_NO_ERROR) {
+                std::cerr << "Failed to create GL texture! Error: " << glErr << '\n';
+                m_useGLInterop = false;
+                glDeleteTextures(1, &m_sharedTexture);
+                m_sharedTexture = 0;
+            } else {
+                m_clImageCurrent = clCreateFromGLTexture(
+                    m_computeManager->getContext(), CL_MEM_READ_WRITE,
+                    GL_TEXTURE_2D, 0, m_sharedTexture, &err);
+                
+                if (err != CL_SUCCESS) {
+                    std::cerr << "Failed to create CL image from GL texture! Error: " 
+                              << err << '\n';
+                    m_useGLInterop = false;
+                    glDeleteTextures(1, &m_sharedTexture);
+                    m_sharedTexture = 0;
+                } else {
+                    std::cout << "GL-CL interop successfully initialized\n";
+                }
+            }
         }
+#endif
+        
+        if (!m_useGLInterop) {
+            std::cout << "Creating regular OpenCL buffers (with CPU transfers)\n";
+            
+            size_t bufferSize{ m_width * m_height * 2 * sizeof(float) };
 
-        m_bufferNext =
-            clCreateBuffer(m_computeManager->getContext(), CL_MEM_READ_WRITE,
-                           bufferSize, nullptr, &err);
-        if (err != CL_SUCCESS) {
-            std::cerr << "Failed to create next buffer! Error: " << err << '\n';
-            return;
+            m_bufferCurrent =
+                clCreateBuffer(m_computeManager->getContext(), CL_MEM_READ_WRITE,
+                               bufferSize, nullptr, &err);
+            if (err != CL_SUCCESS) {
+                std::cerr << "Failed to create current buffer! Error: " << err
+                          << '\n';
+                return;
+            }
+
+            m_bufferNext =
+                clCreateBuffer(m_computeManager->getContext(), CL_MEM_READ_WRITE,
+                               bufferSize, nullptr, &err);
+            if (err != CL_SUCCESS) {
+                std::cerr << "Failed to create next buffer! Error: " << err << '\n';
+                return;
+            }
         }
     }
 
