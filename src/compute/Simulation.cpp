@@ -92,7 +92,7 @@ namespace GreyScott {
                 m_sharedTexture = 0;
             } else {
                 m_clImageCurrent = clCreateFromGLTexture(
-                    m_computeManager->getContext(), CL_MEM_READ_WRITE,
+                    m_computeManager->getContext(), CL_MEM_WRITE_ONLY,
                     GL_TEXTURE_2D, 0, m_sharedTexture, &err);
                 
                 if (err != CL_SUCCESS) {
@@ -101,8 +101,43 @@ namespace GreyScott {
                     m_useGLInterop = false;
                     glDeleteTextures(1, &m_sharedTexture);
                     m_sharedTexture = 0;
+                    m_clImageCurrent = nullptr;
+                }
+            }
+            
+             if (m_useGLInterop) {
+                size_t bufferSize{ m_width * m_height * 2 * sizeof(float) };
+                
+                m_bufferCurrent = clCreateBuffer(m_computeManager->getContext(), 
+                                                CL_MEM_READ_WRITE, bufferSize, 
+                                                nullptr, &err);
+                if (err != CL_SUCCESS) {
+                    std::cerr << "Failed to create current buffer! Error: " << err << '\n';
+                    m_useGLInterop = false;
+                    if (m_clImageCurrent) {
+                        clReleaseMemObject(m_clImageCurrent);
+                        m_clImageCurrent = nullptr;
+                    }
+                    glDeleteTextures(1, &m_sharedTexture);
+                    m_sharedTexture = 0;
                 } else {
-                    std::cout << "GL-CL interop successfully initialized\n";
+                    m_bufferNext = clCreateBuffer(m_computeManager->getContext(), 
+                                                 CL_MEM_READ_WRITE, bufferSize, 
+                                                 nullptr, &err);
+                    if (err != CL_SUCCESS) {
+                        std::cerr << "Failed to create next buffer! Error: " << err << '\n';
+                        m_useGLInterop = false;
+                        clReleaseMemObject(m_bufferCurrent);
+                        m_bufferCurrent = nullptr;
+                        if (m_clImageCurrent) {
+                            clReleaseMemObject(m_clImageCurrent);
+                            m_clImageCurrent = nullptr;
+                        }
+                        glDeleteTextures(1, &m_sharedTexture);
+                        m_sharedTexture = 0;
+                    } else {
+                        std::cout << "GL-CL interop successfully initialized\n";
+                    }
                 }
             }
         }
@@ -201,6 +236,35 @@ namespace GreyScott {
 
         clFinish(m_computeManager->getQueue());
 
+#ifndef __APPLE__
+        if (m_useGLInterop) {
+            err = clEnqueueAcquireGLObjects(m_computeManager->getQueue(), 1,
+                                           &m_clImageCurrent, 0, nullptr, nullptr);
+            if (err != CL_SUCCESS) {
+                std::cerr << "Failed to acquire GL objects! Error: " << err << '\n';
+            } else {
+                size_t origin[3] = {0, 0, 0};
+                size_t region[3] = {static_cast<size_t>(m_width), 
+                                   static_cast<size_t>(m_height), 1};
+                
+                err = clEnqueueCopyBufferToImage(m_computeManager->getQueue(),
+                                                m_bufferNext, m_clImageCurrent,
+                                                0, origin, region, 0, nullptr, nullptr);
+                if (err != CL_SUCCESS) {
+                    std::cerr << "Failed to copy buffer to GL texture! Error: " << err << '\n';
+                }
+                
+                err = clEnqueueReleaseGLObjects(m_computeManager->getQueue(), 1,
+                                               &m_clImageCurrent, 0, nullptr, nullptr);
+                if (err != CL_SUCCESS) {
+                    std::cerr << "Failed to release GL objects! Error: " << err << '\n';
+                }
+                
+                clFinish(m_computeManager->getQueue());
+            }
+        }
+#endif
+
         cl_ulong time_start, time_end;
         clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_START, sizeof(time_start), &time_start, nullptr);
         clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_END, sizeof(time_end), &time_end, nullptr);
@@ -210,10 +274,14 @@ namespace GreyScott {
 
         std::swap(m_bufferCurrent, m_bufferNext);
 
-        readBackData();
+        if (!m_useGLInterop) {
+            readBackData();
+        }
     }
 
     void Simulation::readBackData() {
+        if (m_useGLInterop) return;
+        
         cl_int err = clEnqueueReadBuffer(
             m_computeManager->getQueue(), m_bufferCurrent, CL_TRUE, 0,
             m_width * m_height * 2 * sizeof(float), m_hostData.data(), 0,
