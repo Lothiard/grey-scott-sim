@@ -58,6 +58,7 @@ void main() {
         m_width{ width },
         m_height{ height },
         m_initialized{ false },
+        m_usingExternalTexture{ false },
         m_texture{ 0 },
         m_vao{ 0 },
         m_vbo{ 0 },
@@ -72,7 +73,9 @@ void main() {
         if (m_fragmentShader) { glDeleteShader(m_fragmentShader); }
         if (m_vbo) { glDeleteBuffers(1, &m_vbo); }
         if (m_vao) { glDeleteVertexArrays(1, &m_vao); }
-        if (m_texture) { glDeleteTextures(1, &m_texture); }
+        if (m_texture && !m_usingExternalTexture) { 
+            glDeleteTextures(1, &m_texture); 
+        }
     }
 
     bool Renderer::initialize() {
@@ -81,7 +84,9 @@ void main() {
             return false;
         }
 
-        if (!createTexture()) { return false; }
+        if (!m_usingExternalTexture) {
+            if (!createTexture()) { return false; }
+        }
         if (!createShaders()) { return false; }
         if (!createQuad()) { return false; }
 
@@ -209,8 +214,19 @@ void main() {
         return true;
     }
 
+    void Renderer::setExternalTexture(GLuint externalTexture) {
+        if (m_initialized) {
+            std::cerr << "Cannot set external texture after initialization!\n";
+            return;
+        }
+        
+        m_texture = externalTexture;
+        m_usingExternalTexture = true;
+        std::cout << "Using external texture ID: " << externalTexture << '\n';
+    }
+
     void Renderer::updateTexture(const float* data) {
-        if (!m_initialized || !data) { return; }
+        if (!m_initialized || !data || m_usingExternalTexture) { return; }
 
         glBindTexture(GL_TEXTURE_2D, m_texture);
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_width, m_height, GL_RG,

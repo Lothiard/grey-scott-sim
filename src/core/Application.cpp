@@ -64,16 +64,7 @@ namespace GreyScott {
             std::cerr << "Failed to initialize compute manager!\n";
             return false;
         }
-#endif
-
-        m_renderer =
-            std::make_unique<Renderer>(m_config.gridWidth, m_config.gridHeight);
-        if (!m_renderer->initialize()) {
-            std::cerr << "Failed to initialize renderer!\n";
-            return false;
-        }
-
-#ifdef USE_OPENCL
+        
         m_simulation = std::make_unique<Simulation>(
             m_config.gridWidth, m_config.gridHeight, m_computeManager.get());
         if (!m_simulation->initialize()) {
@@ -81,6 +72,24 @@ namespace GreyScott {
             return false;
         }
 #endif
+
+        m_renderer =
+            std::make_unique<Renderer>(m_config.gridWidth, m_config.gridHeight);
+            
+#ifdef USE_OPENCL
+        if (m_simulation->usesGLInterop()) {
+            GLuint sharedTexture = m_simulation->getSharedTexture();
+            if (sharedTexture != 0) {
+                m_renderer->setExternalTexture(sharedTexture);
+                std::cout << "Using zero-copy GL-CL interop for rendering\n";
+            }
+        }
+#endif
+        
+        if (!m_renderer->initialize()) {
+            std::cerr << "Failed to initialize renderer!\n";
+            return false;
+        }
 
         m_simulationCPU = std::make_unique<SimulationCPU>(
             m_config.gridWidth, m_config.gridHeight);
