@@ -399,14 +399,19 @@ namespace GreyScott {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         if (m_renderer) {
-            const float* data;
 #ifdef USE_OPENCL
-            data = m_useCPU ? m_simulationCPU->getData() : m_simulation->getData();
+            if (!m_useCPU && m_simulation->usesGLInterop()) {
+                m_renderer->render();
+            } else {
+                const float* data = m_useCPU ? m_simulationCPU->getData() : m_simulation->getData();
+                m_renderer->updateTexture(data);
+                m_renderer->render();
+            }
 #else
-            data = m_simulationCPU->getData();
-#endif
+            const float* data = m_simulationCPU->getData();
             m_renderer->updateTexture(data);
             m_renderer->render();
+#endif
         }
 
         ImGui_ImplOpenGL3_NewFrame();
