@@ -4,12 +4,22 @@
 #include <iostream>
 #include <random>
 
+#include <GL/glew.h>
+
+#ifndef __APPLE__
+    #include <CL/cl_gl.h>
+#endif
+
 namespace GreyScott {
     Simulation::Simulation(int width, int height,
                            ComputeManager* computeManager) :
         m_width{ width },
         m_height{ height },
         m_computeManager{ computeManager },
+        m_sharedTexture{ 0 },
+        m_clImageCurrent{ nullptr },
+        m_clImageNext{ nullptr },
+        m_useGLInterop{ false },
         m_bufferCurrent{ nullptr },
         m_bufferNext{ nullptr },
         m_kernel{ nullptr },
@@ -20,6 +30,11 @@ namespace GreyScott {
 
     Simulation::~Simulation() {
         if (m_kernel) clReleaseKernel(m_kernel);
+        
+        if (m_clImageCurrent) clReleaseMemObject(m_clImageCurrent);
+        if (m_clImageNext) clReleaseMemObject(m_clImageNext);
+        if (m_sharedTexture) glDeleteTextures(1, &m_sharedTexture);
+        
         if (m_bufferCurrent) clReleaseMemObject(m_bufferCurrent);
         if (m_bufferNext) clReleaseMemObject(m_bufferNext);
     }
@@ -51,23 +66,104 @@ namespace GreyScott {
 
     void Simulation::createBuffers() {
         cl_int err{};
-        size_t bufferSize{ m_width * m_height * 2 * sizeof(float) };
-
-        m_bufferCurrent =
-            clCreateBuffer(m_computeManager->getContext(), CL_MEM_READ_WRITE,
-                           bufferSize, nullptr, &err);
-        if (err != CL_SUCCESS) {
-            std::cerr << "Failed to create current buffer! Error: " << err
-                      << '\n';
-            return;
+        
+        m_useGLInterop = m_computeManager->hasGLInterop();
+        
+#ifndef __APPLE__
+        if (m_useGLInterop) {
+            std::cout << "Creating GL-shared textures for zero-copy rendering\n";
+            
+            glGenTextures(1, &m_sharedTexture);
+            glBindTexture(GL_TEXTURE_2D, m_sharedTexture);
+            
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RG32F, m_width, m_height, 0,
+                        GL_RG, GL_FLOAT, nullptr);
+            
+            GLenum glErr = glGetError();
+            if (glErr != GL_NO_ERROR) {
+                std::cerr << "Failed to create GL texture! Error: " << glErr << '\n';
+                m_useGLInterop = false;
+                glDeleteTextures(1, &m_sharedTexture);
+                m_sharedTexture = 0;
+            } else {
+                m_clImageCurrent = clCreateFromGLTexture(
+                    m_computeManager->getContext(), CL_MEM_WRITE_ONLY,
+                    GL_TEXTURE_2D, 0, m_sharedTexture, &err);
+                
+                if (err != CL_SUCCESS) {
+                    std::cerr << "Failed to create CL image from GL texture! Error: " 
+                              << err << '\n';
+                    m_useGLInterop = false;
+                    glDeleteTextures(1, &m_sharedTexture);
+                    m_sharedTexture = 0;
+                    m_clImageCurrent = nullptr;
+                }
+            }
+            
+             if (m_useGLInterop) {
+                size_t bufferSize{ m_width * m_height * 2 * sizeof(float) };
+                
+                m_bufferCurrent = clCreateBuffer(m_computeManager->getContext(), 
+                                                CL_MEM_READ_WRITE, bufferSize, 
+                                                nullptr, &err);
+                if (err != CL_SUCCESS) {
+                    std::cerr << "Failed to create current buffer! Error: " << err << '\n';
+                    m_useGLInterop = false;
+                    if (m_clImageCurrent) {
+                        clReleaseMemObject(m_clImageCurrent);
+                        m_clImageCurrent = nullptr;
+                    }
+                    glDeleteTextures(1, &m_sharedTexture);
+                    m_sharedTexture = 0;
+                } else {
+                    m_bufferNext = clCreateBuffer(m_computeManager->getContext(), 
+                                                 CL_MEM_READ_WRITE, bufferSize, 
+                                                 nullptr, &err);
+                    if (err != CL_SUCCESS) {
+                        std::cerr << "Failed to create next buffer! Error: " << err << '\n';
+                        m_useGLInterop = false;
+                        clReleaseMemObject(m_bufferCurrent);
+                        m_bufferCurrent = nullptr;
+                        if (m_clImageCurrent) {
+                            clReleaseMemObject(m_clImageCurrent);
+                            m_clImageCurrent = nullptr;
+                        }
+                        glDeleteTextures(1, &m_sharedTexture);
+                        m_sharedTexture = 0;
+                    } else {
+                        std::cout << "GL-CL interop successfully initialized\n";
+                    }
+                }
+            }
         }
+#endif
+        
+        if (!m_useGLInterop) {
+            std::cout << "Creating regular OpenCL buffers (with CPU transfers)\n";
+            
+            size_t bufferSize{ m_width * m_height * 2 * sizeof(float) };
 
-        m_bufferNext =
-            clCreateBuffer(m_computeManager->getContext(), CL_MEM_READ_WRITE,
-                           bufferSize, nullptr, &err);
-        if (err != CL_SUCCESS) {
-            std::cerr << "Failed to create next buffer! Error: " << err << '\n';
-            return;
+            m_bufferCurrent =
+                clCreateBuffer(m_computeManager->getContext(), CL_MEM_READ_WRITE,
+                               bufferSize, nullptr, &err);
+            if (err != CL_SUCCESS) {
+                std::cerr << "Failed to create current buffer! Error: " << err
+                          << '\n';
+                return;
+            }
+
+            m_bufferNext =
+                clCreateBuffer(m_computeManager->getContext(), CL_MEM_READ_WRITE,
+                               bufferSize, nullptr, &err);
+            if (err != CL_SUCCESS) {
+                std::cerr << "Failed to create next buffer! Error: " << err << '\n';
+                return;
+            }
         }
     }
 
@@ -140,6 +236,35 @@ namespace GreyScott {
 
         clFinish(m_computeManager->getQueue());
 
+#ifndef __APPLE__
+        if (m_useGLInterop) {
+            err = clEnqueueAcquireGLObjects(m_computeManager->getQueue(), 1,
+                                           &m_clImageCurrent, 0, nullptr, nullptr);
+            if (err != CL_SUCCESS) {
+                std::cerr << "Failed to acquire GL objects! Error: " << err << '\n';
+            } else {
+                size_t origin[3] = {0, 0, 0};
+                size_t region[3] = {static_cast<size_t>(m_width), 
+                                   static_cast<size_t>(m_height), 1};
+                
+                err = clEnqueueCopyBufferToImage(m_computeManager->getQueue(),
+                                                m_bufferNext, m_clImageCurrent,
+                                                0, origin, region, 0, nullptr, nullptr);
+                if (err != CL_SUCCESS) {
+                    std::cerr << "Failed to copy buffer to GL texture! Error: " << err << '\n';
+                }
+                
+                err = clEnqueueReleaseGLObjects(m_computeManager->getQueue(), 1,
+                                               &m_clImageCurrent, 0, nullptr, nullptr);
+                if (err != CL_SUCCESS) {
+                    std::cerr << "Failed to release GL objects! Error: " << err << '\n';
+                }
+                
+                clFinish(m_computeManager->getQueue());
+            }
+        }
+#endif
+
         cl_ulong time_start, time_end;
         clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_START, sizeof(time_start), &time_start, nullptr);
         clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_END, sizeof(time_end), &time_end, nullptr);
@@ -149,10 +274,14 @@ namespace GreyScott {
 
         std::swap(m_bufferCurrent, m_bufferNext);
 
-        readBackData();
+        if (!m_useGLInterop) {
+            readBackData();
+        }
     }
 
     void Simulation::readBackData() {
+        if (m_useGLInterop) return;
+        
         cl_int err = clEnqueueReadBuffer(
             m_computeManager->getQueue(), m_bufferCurrent, CL_TRUE, 0,
             m_width * m_height * 2 * sizeof(float), m_hostData.data(), 0,
@@ -164,6 +293,20 @@ namespace GreyScott {
 
     void Simulation::reset() { initializeState(); }
 
+    void Simulation::forceReadBack() {
+        if (m_useGLInterop) {
+            cl_int err = clEnqueueReadBuffer(
+                m_computeManager->getQueue(), m_bufferCurrent, CL_TRUE, 0,
+                m_width * m_height * 2 * sizeof(float), m_hostData.data(), 0,
+                nullptr, nullptr);
+            if (err != CL_SUCCESS) {
+                std::cerr << "Failed to force read back data! Error: " << err << '\n';
+            }
+        } else {
+            readBackData();
+        }
+    }
+
     void Simulation::syncFrom(const float* data) {
         std::copy(data, data + m_width * m_height * 2, m_hostData.begin());
 
@@ -173,7 +316,28 @@ namespace GreyScott {
             nullptr, nullptr);
         if (err != CL_SUCCESS) {
             std::cerr << "Failed to sync data to GPU! Error: " << err << '\n';
+            return;
         }
+
+#ifndef __APPLE__
+        if (m_useGLInterop) {
+            err = clEnqueueAcquireGLObjects(m_computeManager->getQueue(), 1,
+                                           &m_clImageCurrent, 0, nullptr, nullptr);
+            if (err == CL_SUCCESS) {
+                size_t origin[3] = {0, 0, 0};
+                size_t region[3] = {static_cast<size_t>(m_width),
+                                   static_cast<size_t>(m_height), 1};
+                
+                err = clEnqueueCopyBufferToImage(m_computeManager->getQueue(),
+                                                m_bufferCurrent, m_clImageCurrent,
+                                                0, origin, region, 0, nullptr, nullptr);
+                
+                clEnqueueReleaseGLObjects(m_computeManager->getQueue(), 1,
+                                         &m_clImageCurrent, 0, nullptr, nullptr);
+                clFinish(m_computeManager->getQueue());
+            }
+        }
+#endif
     }
 
     void Simulation::loadPreset(int presetIndex) {

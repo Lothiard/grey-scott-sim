@@ -6,9 +6,21 @@
 #include <iostream>
 #include <sstream>
 
+// OpenGL interop headers (non-macOS only)
+#ifndef __APPLE__
+    #ifdef _WIN32
+        #include <windows.h>
+        #include <GL/gl.h>
+    #else
+        #include <GL/glx.h>
+    #endif
+    #include <CL/cl_gl.h>
+#endif
+
 namespace GreyScott {
     ComputeManager::ComputeManager() :
         m_initialized{ false },
+        m_hasGLInterop{ false },
         m_platform{ nullptr },
         m_device{ nullptr },
         m_context{ nullptr },
@@ -93,8 +105,41 @@ namespace GreyScott {
         }
 
         // Create context
-        m_context =
-            clCreateContext(nullptr, 1, &m_device, nullptr, nullptr, &err);
+#ifndef __APPLE__
+        m_hasGLInterop = checkGLInteropSupport();
+        
+        if (m_hasGLInterop) {
+            std::cout << "OpenCL-OpenGL interop available, enabling shared context\n";
+            
+            cl_context_properties properties[] = {
+#ifdef _WIN32
+                CL_GL_CONTEXT_KHR, (cl_context_properties)wglGetCurrentContext(),
+                CL_WGL_HDC_KHR, (cl_context_properties)wglGetCurrentDC(),
+#else // Linux
+                CL_GL_CONTEXT_KHR, (cl_context_properties)glXGetCurrentContext(),
+                CL_GLX_DISPLAY_KHR, (cl_context_properties)glXGetCurrentDisplay(),
+#endif
+                CL_CONTEXT_PLATFORM, (cl_context_properties)m_platform,
+                0
+            };
+            
+            m_context = clCreateContext(properties, 1, &m_device, nullptr, nullptr, &err);
+            
+            if (err != CL_SUCCESS) {
+                std::cerr << "Failed to create GL-shared context, falling back to regular context\n";
+                m_hasGLInterop = false;
+                m_context = clCreateContext(nullptr, 1, &m_device, nullptr, nullptr, &err);
+            }
+        } else {
+            std::cout << "OpenCL-OpenGL interop not available, using regular context\n";
+            m_context = clCreateContext(nullptr, 1, &m_device, nullptr, nullptr, &err);
+        }
+#else // macOS
+        std::cout << "macOS detected: using regular context (GL interop deprecated)\n";
+        m_hasGLInterop = false;
+        m_context = clCreateContext(nullptr, 1, &m_device, nullptr, nullptr, &err);
+#endif
+        
         if (err != CL_SUCCESS) {
             std::cerr << "Failed to create OpenCL context! Error: " << err
                       << '\n';
@@ -320,6 +365,34 @@ namespace GreyScott {
         std::cout << "Loaded kernel '" << kernelName << "' from " << filename
                   << '\n';
         return kernel;
+    }
+
+    bool ComputeManager::checkGLInteropSupport() const {
+#ifdef __APPLE__
+        return false;
+#else
+        if (!m_platform) {
+            return false;
+        }
+
+        size_t extensionSize{};
+        cl_int err = clGetPlatformInfo(m_platform, CL_PLATFORM_EXTENSIONS, 0,
+                                       nullptr, &extensionSize);
+        if (err != CL_SUCCESS) {
+            return false;
+        }
+
+        std::vector<char> extensions(extensionSize);
+        err = clGetPlatformInfo(m_platform, CL_PLATFORM_EXTENSIONS,
+                               extensionSize, extensions.data(), nullptr);
+        if (err != CL_SUCCESS) {
+            return false;
+        }
+
+        std::string extensionString(extensions.data());
+
+        return extensionString.find("cl_khr_gl_sharing") != std::string::npos;
+#endif
     }
 
 } // namespace GreyScott

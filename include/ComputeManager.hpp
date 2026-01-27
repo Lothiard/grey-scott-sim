@@ -47,6 +47,7 @@ namespace GreyScott {
         }
 
         bool isInitialized() const { return m_initialized; }
+        bool hasGLInterop() const { return m_hasGLInterop; }
 
         cl_kernel loadKernel(const std::string& filename,
                              const std::string& kernelName);
@@ -57,11 +58,13 @@ namespace GreyScott {
 
     private:
         DeviceInfo getDeviceInfo(cl_device_id device) const;
+        bool checkGLInteropSupport() const;
 
         std::string getDeviceTypeString(cl_device_type type) const;
         std::string readKernelSource(const std::string& filename) const;
 
         bool m_initialized{};
+        bool m_hasGLInterop{};
         cl_platform_id m_platform{};
         cl_device_id m_device{};
         cl_context m_context{};

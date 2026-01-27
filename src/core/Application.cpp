@@ -64,16 +64,7 @@ namespace GreyScott {
             std::cerr << "Failed to initialize compute manager!\n";
             return false;
         }
-#endif
-
-        m_renderer =
-            std::make_unique<Renderer>(m_config.gridWidth, m_config.gridHeight);
-        if (!m_renderer->initialize()) {
-            std::cerr << "Failed to initialize renderer!\n";
-            return false;
-        }
-
-#ifdef USE_OPENCL
+        
         m_simulation = std::make_unique<Simulation>(
             m_config.gridWidth, m_config.gridHeight, m_computeManager.get());
         if (!m_simulation->initialize()) {
@@ -81,6 +72,24 @@ namespace GreyScott {
             return false;
         }
 #endif
+
+        m_renderer =
+            std::make_unique<Renderer>(m_config.gridWidth, m_config.gridHeight);
+            
+#ifdef USE_OPENCL
+        if (m_simulation->usesGLInterop()) {
+            GLuint sharedTexture = m_simulation->getSharedTexture();
+            if (sharedTexture != 0) {
+                m_renderer->setExternalTexture(sharedTexture);
+                std::cout << "Using zero-copy GL-CL interop for rendering\n";
+            }
+        }
+#endif
+        
+        if (!m_renderer->initialize()) {
+            std::cerr << "Failed to initialize renderer!\n";
+            return false;
+        }
 
         m_simulationCPU = std::make_unique<SimulationCPU>(
             m_config.gridWidth, m_config.gridHeight);
@@ -337,6 +346,7 @@ namespace GreyScott {
                     if (m_useCPU) {
                         m_simulation->syncFrom(m_simulationCPU->getData());
                     } else {
+                        m_simulation->forceReadBack();
                         m_simulationCPU->syncFrom(m_simulation->getData());
                     }
                     m_useCPU = !m_useCPU;
@@ -390,14 +400,19 @@ namespace GreyScott {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         if (m_renderer) {
-            const float* data;
 #ifdef USE_OPENCL
-            data = m_useCPU ? m_simulationCPU->getData() : m_simulation->getData();
+            if (!m_useCPU && m_simulation->usesGLInterop()) {
+                m_renderer->render();
+            } else {
+                const float* data = m_useCPU ? m_simulationCPU->getData() : m_simulation->getData();
+                m_renderer->updateTexture(data);
+                m_renderer->render();
+            }
 #else
-            data = m_simulationCPU->getData();
-#endif
+            const float* data = m_simulationCPU->getData();
             m_renderer->updateTexture(data);
             m_renderer->render();
+#endif
         }
 
         ImGui_ImplOpenGL3_NewFrame();

@@ -30,9 +30,12 @@ namespace GreyScott {
         void step();
         void reset();
         void syncFrom(const float* data);
+        void forceReadBack();
 
         const float* getData() const { return m_hostData.data(); }
         const SimulationParams& getParams() const { return m_params; }
+        unsigned int getSharedTexture() const { return m_sharedTexture; }
+        bool usesGLInterop() const { return m_useGLInterop; }
 
         void setParams(const SimulationParams& params) { m_params = params; }
         void loadPreset(int presetIndex);
@@ -51,8 +54,14 @@ namespace GreyScott {
         ComputeManager* m_computeManager{};
         SimulationParams m_params{};
 
+        unsigned int m_sharedTexture{};
+        cl_mem m_clImageCurrent{};
+        cl_mem m_clImageNext{};
+        bool m_useGLInterop{};
+
         cl_mem m_bufferCurrent{};
         cl_mem m_bufferNext{};
+        
         cl_kernel m_kernel{};
 
         std::vector<float> m_hostData{};

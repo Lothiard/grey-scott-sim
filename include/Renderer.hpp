@@ -22,6 +22,7 @@ namespace GreyScott {
         Renderer& operator=(const Renderer&) = delete;
 
         bool initialize();
+        void setExternalTexture(GLuint externalTexture);
         void updateTexture(const float* data);
         void render();
         GLuint getTextureID() const { return m_texture; }
@@ -34,6 +35,7 @@ namespace GreyScott {
         int m_width{};
         int m_height{};
         bool m_initialized{};
+        bool m_usingExternalTexture{};
 
         // OpenGL resources
         GLuint m_texture{};
